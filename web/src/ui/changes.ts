@@ -115,56 +115,187 @@ export function initChangesSystem(): void {
 
   // Close panels on overlay click
   annotatePanel.querySelector('.annotate-panel-overlay')!.addEventListener('click', closeAnnotatePanel)
-
-  // Bind button self-hover so moving from text → button keeps it visible
-  bindAnnotateBtnHover()
 }
 
-// --- Show/hide annotate button — 统一显示/隐藏逻辑 ---
-// 设计目标：
-//   1. 鼠标从文本移动到按钮本身时，按钮不应中途消失
-//   2. 离开整个内容区/按钮一小段延迟后才真正隐藏（给鼠标移动留出时间）
-//   3. 触屏设备：点击文本元素后按钮常驻，点击按钮或空白处再消失
-let hideTimer: number | null = null
+// ============================================================
+// Annotate button visibility — 单一状态源
+// ============================================================
+//
+// 设计原则：按钮只在以下条件之一满足时显示：
+//   1. 指针（鼠标/笔）正处于某个文本区块（h2/h3/p）上
+//   2. 指针正处于按钮自身上
+//   3. 触屏用户"钉住"了某个文本区块（tap-to-stick）
+//
+// 其余任何情况 → 延迟一小段时间后淡出（给指针移动留出时间）
+//
+// 实现方式：在 contentArea 上用事件委托监听 pointerover/pointerout，
+// 在按钮自身上监听 pointerenter/pointerleave。所有状态判断集中在这里。
+// ============================================================
 
-function cancelPendingHide(): void {
-  if (hideTimer !== null) {
-    clearTimeout(hideTimer)
-    hideTimer = null
+let hideTimeoutId: number | null = null
+let stickModeEl: HTMLElement | null = null   // 触屏"钉住"模式当前锁定的元素
+
+function clearHideTimer(): void {
+  if (hideTimeoutId !== null) {
+    clearTimeout(hideTimeoutId)
+    hideTimeoutId = null
   }
 }
 
-function scheduleHide(delayMs: number = 250): void {
-  cancelPendingHide()
-  hideTimer = window.setTimeout(() => {
-    hideAnnotateBtn()
-    hideTimer = null
+function requestHide(delayMs: number = 250): void {
+  clearHideTimer()
+  hideTimeoutId = window.setTimeout(() => {
+    annotateBtn.classList.remove('visible')
+    hideTimeoutId = null
   }, delayMs)
 }
 
-export function showAnnotateBtn(docPath: string, section: string | null): void {
-  currentDocPath = docPath
-  currentSection = section
-  cancelPendingHide()
+function showNow(): void {
+  clearHideTimer()
   annotateBtn.classList.add('visible')
 }
 
+// 计算按钮相对于目标文本元素的位置
+function positionBtnNextTo(targetEl: HTMLElement): void {
+  const rect = targetEl.getBoundingClientRect()
+  const btnSize = annotateBtn.offsetWidth || 34
+  annotateBtn.style.top = `${rect.top + window.scrollY + 2}px`
+  annotateBtn.style.left = `${Math.max(8, rect.left - btnSize - 6 + window.scrollX)}px`
+}
+
+// 获取目标元素的"章节标注"（用于 annotate 面板副标题）
+function sectionLabelFor(targetEl: HTMLElement): string | null {
+  if (!targetEl.tagName.match(/H[23]/)) return null
+  return `${targetEl.tagName.toLowerCase()} ${targetEl.textContent?.trim() || ''}`
+}
+
+/**
+ * 在指定容器内为所有匹配 selector 的元素绑定 hover + tap 交互。
+ * 由外部调用一次，之后所有文档切换都复用同一批监听器。
+ *
+ * @param container 文本内容的容器元素（contentArea）
+ * @param selector  哪些元素能触发标注按钮（'h2, h3, p'）
+ * @param getDocPath 返回当前文档路径的回调（避免与父模块的循环引用）
+ */
+export function bindAnnotateZones(
+  container: HTMLElement,
+  selector: string,
+  getDocPath: () => string
+): void {
+
+  // ---------- 悬停（鼠标/笔）：显示按钮 ----------
+  container.addEventListener('pointerover', (ev) => {
+    // 仅对"进入文本区"的事件作出响应
+    const targetEl = (ev.target as Element)?.closest?.(selector) as HTMLElement | null
+    if (!targetEl) return
+
+    // 桌面/笔：hover 模式；触屏：pointerover 不稳定，交给 click 路径
+    if (ev.pointerType === 'touch') return
+
+    // 进入钉住模式时也允许 hover 覆盖（移动到其他段落就更新位置）
+    stickModeEl = null
+
+    currentDocPath = getDocPath()
+    currentSection = sectionLabelFor(targetEl)
+    positionBtnNextTo(targetEl)
+    showNow()
+  })
+
+  // ---------- 离开文本区或内容区：延迟隐藏 ----------
+  container.addEventListener('pointerout', (ev) => {
+    if (ev.pointerType === 'touch') return
+
+    const related = ev.relatedTarget as Node | null
+
+    // 1. 如果指针是移动到 contentArea 内部另一个文本元素 → 不做任何事（后续 pointerover 会更新位置）
+    const stillInSomeText =
+      related instanceof Element && related.closest && related.closest(selector) !== null
+    if (stillInSomeText) return
+
+    // 2. 如果指针是移动到按钮本身 → 不隐藏（按钮的 pointerenter 会取消隐藏）
+    const movingToBtn =
+      related !== null && (annotateBtn === related || annotateBtn.contains(related))
+    if (movingToBtn) return
+
+    // 3. 其他情况（离开 contentArea、移到空白区等）→ 延迟隐藏
+    requestHide(220)
+  })
+
+  // ---------- 按钮自身：悬停时取消隐藏；离开时延迟隐藏 ----------
+  annotateBtn.addEventListener('pointerenter', (ev) => {
+    if (ev.pointerType === 'touch') return
+    clearHideTimer()
+  })
+
+  annotateBtn.addEventListener('pointerleave', (ev) => {
+    if (ev.pointerType === 'touch') return
+    const related = ev.relatedTarget as Node | null
+    const goingToText =
+      related instanceof Element && related.closest && related.closest(selector) !== null
+    if (goingToText) {
+      // 从按钮回到文本区 → 保持显示（container 的 pointerover 会接管）
+      clearHideTimer()
+      return
+    }
+    requestHide(180)
+  })
+
+  // ---------- 点击空白区 / 触屏交互（点击即可见） ----------
+  // 桌面端（鼠标/笔）由 hover 路径接管显示/隐藏；这里只处理触屏与"点击空白取消"。
+  container.addEventListener('pointerdown', (ev) => {
+    const target = ev.target as HTMLElement | null
+    if (!target) return
+
+    // 点击了交互元素（链接/按钮/输入框）→ 交给它们自己处理
+    if (target.closest('a, button, input, textarea, .annotate-btn')) return
+
+    const targetEl = target.closest(selector) as HTMLElement | null
+    const isTouch = ev.pointerType === 'touch'
+
+    if (!targetEl) {
+      // 点在空白区 → 立即隐藏（同时退出钉住模式）
+      stickModeEl = null
+      hideAnnotateBtn()
+      return
+    }
+
+    // 只有触屏才用点击来钉住；鼠标由 hover 负责
+    if (!isTouch) return
+
+    currentDocPath = getDocPath()
+    currentSection = sectionLabelFor(targetEl)
+    positionBtnNextTo(targetEl)
+
+    if (stickModeEl === targetEl) {
+      // 同一段落再点一次 → 取消钉住
+      stickModeEl = null
+      hideAnnotateBtn()
+    } else {
+      stickModeEl = targetEl
+      showNow()
+      ev.stopPropagation()
+    }
+  })
+}
+
+// --- 对外 API（简洁明了） ---
+export function showAnnotateBtn(docPath: string, section: string | null): void {
+  currentDocPath = docPath
+  currentSection = section
+  showNow()
+}
+
 export function hideAnnotateBtn(): void {
+  clearHideTimer()
+  stickModeEl = null
   annotateBtn.classList.remove('visible')
 }
 
 export function scheduleHideAnnotateBtn(delayMs: number = 250): void {
-  scheduleHide(delayMs)
+  requestHide(delayMs)
 }
 
-// 按钮自身也要参与 hover 判定：悬停在按钮上时取消隐藏
-function bindAnnotateBtnHover(): void {
-  annotateBtn.addEventListener('pointerenter', cancelPendingHide)
-  annotateBtn.addEventListener('pointerleave', () => scheduleHide(150))
-}
-
-// 移动端 / 备用点击逻辑：按钮在 visible 状态下接收 click 即可
-// （showAnnotateBtn 已处理 visible 态，这里无需额外绑定）
+// 旧的 bindAnnotateBtnHover 已并入 bindAnnotateZones，不单独暴露
 
 
 // --- Annotate panel ---

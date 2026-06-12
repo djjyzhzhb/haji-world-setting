@@ -1,6 +1,6 @@
 import './style.css'
 import { marked } from 'marked'
-import { initChangesSystem, showAnnotateBtn, hideAnnotateBtn, scheduleHideAnnotateBtn } from './ui/changes'
+import { initChangesSystem, bindAnnotateZones } from './ui/changes'
 
 // --- Types ---
 interface NavItem {
@@ -393,79 +393,10 @@ function renderContent(doc: DocEntry) {
   `
 }
 
-// --- Annotate hover & tap system — 绑定一次，复用在所有文档 ---
-// 原逻辑缺陷：每个 h2/h3/p 各自绑 mouseenter/mouseleave
-//   1. 鼠标从文本移动到按钮时触发 mouseleave → 按钮消失
-//   2. 每次加载文档都重新绑一批监听器 → 泄漏
-//   3. 完全不支持触屏
-//
-// 新逻辑：
-//   - 在 contentArea 根节点上用 pointerover/pointerout 委托事件（只需绑一次）
-//   - 按钮自身也参与 hover 判定：悬停按钮时取消隐藏
-//   - 离开内容区 + 离开按钮 → 250ms 延迟隐藏，给指针移动留时间
-//   - 触屏设备：点击文本元素 → 按钮常驻；再点空白处隐藏
+// --- Annotate button hover/tap 绑定（只在初始化时调用一次） ---
+// 所有可见性判断、位置计算都在 bindAnnotateZones 内部处理（单一状态源）。
 function initAnnotateHoverSystem(): void {
-  const btn = document.querySelector('.annotate-btn') as HTMLElement | null
-  let activeTextEl: HTMLElement | null = null
-
-  function positionBtnFor(targetEl: HTMLElement): void {
-    if (!btn) return
-    const rect = targetEl.getBoundingClientRect()
-    const btnSize = btn.offsetWidth || 32
-    btn.style.top = `${rect.top + window.scrollY + 2}px`
-    btn.style.left = `${Math.max(8, rect.left - btnSize - 6 + window.scrollX)}px`
-  }
-
-  contentArea.addEventListener('pointerover', (ev) => {
-    const targetEl = (ev.target as HTMLElement | null)?.closest('h2, h3, p') as HTMLElement | null
-    if (!targetEl) return
-    if (activeTextEl === targetEl) return
-    activeTextEl = targetEl
-
-    const headingText = targetEl.tagName.match(/H[23]/) ? targetEl.textContent?.trim() || null : null
-    const section = headingText ? `${targetEl.tagName.toLowerCase()} ${headingText}` : null
-    showAnnotateBtn(currentDoc?.path || '', section)
-    positionBtnFor(targetEl)
-  })
-
-  contentArea.addEventListener('pointerout', (ev) => {
-    const related = ev.relatedTarget as Node | null
-    const stillInContent = related && contentArea.contains(related)
-    const stillOnBtn = related && btn && (btn === related || btn.contains(related))
-    if (!stillInContent && !stillOnBtn) {
-      activeTextEl = null
-      scheduleHideAnnotateBtn(250)
-    }
-  })
-
-  // --- 移动端 / 触屏设备：点击文本 → 按钮常驻；点击空白 → 隐藏 ---
-  contentArea.addEventListener('click', (ev) => {
-    const targetEl = (ev.target as HTMLElement | null)?.closest('h2, h3, p') as HTMLElement | null
-
-    // 忽略超链接/按钮等可交互元素
-    if ((ev.target as HTMLElement).closest('a, button, input, textarea, .annotate-btn')) return
-
-    if (!targetEl) {
-      // 点击空白区域 → 隐藏
-      activeTextEl = null
-      hideAnnotateBtn()
-      return
-    }
-
-    // 点到同一段 → 切换隐藏（给触屏用户一个取消方式）
-    if (activeTextEl === targetEl) {
-      activeTextEl = null
-      hideAnnotateBtn()
-      return
-    }
-
-    activeTextEl = targetEl
-    const headingText = targetEl.tagName.match(/H[23]/) ? targetEl.textContent?.trim() || null : null
-    const section = headingText ? `${targetEl.tagName.toLowerCase()} ${headingText}` : null
-    showAnnotateBtn(currentDoc?.path || '', section)
-    positionBtnFor(targetEl)
-    ev.stopPropagation()
-  })
+  bindAnnotateZones(contentArea, 'h2, h3, p', () => currentDoc?.path || '')
 }
 
 /**
