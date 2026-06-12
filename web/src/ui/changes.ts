@@ -1,10 +1,21 @@
-import type { ChangeNote, ChangeType } from '../api'
-import { generateId, downloadChangeNote, downloadAllChanges } from '../api'
+import type { ChangeNote, ChangeType, ChangeStatus } from '../api'
+import {
+  generateId,
+  downloadChangeNote,
+  downloadAllChanges,
+  importChangeNotesFromFile,
+} from '../api'
+
+const STORAGE_KEY = 'app.changeNotes.v1'
 
 // --- Session state ---
-let changes: ChangeNote[] = []
+let changes: ChangeNote[] = loadFromStorage()
 let currentDocPath: string | null = null
 let currentSection: string | null = null
+
+// 可选筛选条件
+let filterText = ''
+let filterStatus: 'all' | ChangeStatus = 'all'
 
 // --- DOM elements ---
 let annotateBtn: HTMLElement
@@ -12,6 +23,9 @@ let annotatePanel: HTMLElement
 let changesPanel: HTMLElement
 let changesToggle: HTMLElement
 let changesCount: HTMLElement
+let changesList: HTMLElement
+let changesSearch: HTMLInputElement | null = null
+let changesImportInput: HTMLInputElement | null = null
 
 // --- Type labels ---
 const typeLabels: Record<ChangeType, string> = {
@@ -19,6 +33,13 @@ const typeLabels: Record<ChangeType, string> = {
   draft: '草稿',
   correction: '修正',
   idea: '灵感',
+}
+
+const statusLabels: Record<ChangeStatus, string> = {
+  pending: '待处理',
+  reviewed: '已审阅',
+  applied: '已应用',
+  rejected: '已忽略',
 }
 
 // --- Initialize ---
@@ -70,13 +91,13 @@ export function initChangesSystem(): void {
       </div>
       <div class="annotate-panel-footer">
         <button class="btn btn-secondary" id="annotate-cancel">取消</button>
-        <button class="btn btn-primary" id="annotate-save">保存并下载</button>
+        <button class="btn btn-primary" id="annotate-save">保存到变更记录</button>
       </div>
     </div>
   `
   document.body.appendChild(annotatePanel)
 
-  // Create changes panel (right sidebar)
+  // Create changes panel (right sidebar) —— 新增搜索 / 导入 / 状态筛选
   changesPanel = document.createElement('div')
   changesPanel.className = 'changes-panel'
   changesPanel.innerHTML = `
@@ -84,11 +105,24 @@ export function initChangesSystem(): void {
       <h3>变更记录</h3>
       <button class="changes-panel-close" id="changes-close">&times;</button>
     </div>
+    <div class="changes-panel-toolbar">
+      <input type="text" id="changes-search" class="search-input" placeholder="搜索标题 / 文档 / 标签..." />
+      <select id="changes-status-filter" class="search-input" style="font-size:12px;">
+        <option value="all">全部状态</option>
+        <option value="pending">待处理</option>
+        <option value="reviewed">已审阅</option>
+        <option value="applied">已应用</option>
+        <option value="rejected">已忽略</option>
+      </select>
+    </div>
     <div class="changes-panel-body" id="changes-list">
       <div class="changes-empty">暂无变更记录</div>
     </div>
     <div class="changes-panel-footer">
-      <button class="btn btn-secondary btn-sm" id="changes-download-all">下载全部</button>
+      <button class="btn btn-secondary btn-sm" id="changes-import-btn">导入 JSON</button>
+      <button class="btn btn-secondary btn-sm" id="changes-clear">清空</button>
+      <button class="btn btn-primary btn-sm" id="changes-download-all">批量下载 (0 条)</button>
+      <input type="file" id="changes-import-input" accept="application/json" multiple style="display:none;" />
     </div>
   `
   document.body.appendChild(changesPanel)
@@ -109,12 +143,101 @@ export function initChangesSystem(): void {
   document.getElementById('annotate-cancel')!.addEventListener('click', closeAnnotatePanel)
   document.getElementById('changes-close')!.addEventListener('click', closeChangesPanel)
   document.getElementById('annotate-save')!.addEventListener('click', saveAnnotate)
+
+  // 批量下载（打包为单一 JSON 文件）
   document.getElementById('changes-download-all')!.addEventListener('click', () => {
     downloadAllChanges(changes)
   })
 
+  // 清空记录
+  document.getElementById('changes-clear')!.addEventListener('click', () => {
+    if (!changes.length) return
+    if (confirm(`确认清空全部 ${changes.length} 条变更记录？（不可恢复）`)) {
+      changes = []
+      persistAndRefresh()
+    }
+  })
+
+  // 搜索 / 筛选
+  changesSearch = document.getElementById('changes-search') as HTMLInputElement
+  changesSearch?.addEventListener('input', () => {
+    filterText = changesSearch?.value.trim().toLowerCase() || ''
+    updateChangesList()
+  })
+  const statusFilter = document.getElementById('changes-status-filter') as HTMLSelectElement
+  statusFilter?.addEventListener('change', () => {
+    filterStatus = statusFilter.value as 'all' | ChangeStatus
+    updateChangesList()
+  })
+
+  // 导入 JSON（支持多文件、bundle、单条记录）
+  changesImportInput = document.getElementById('changes-import-input') as HTMLInputElement
+  document.getElementById('changes-import-btn')!.addEventListener('click', () => {
+    changesImportInput?.click()
+  })
+  changesImportInput?.addEventListener('change', async () => {
+    if (!changesImportInput?.files || !changesImportInput.files.length) return
+    let imported = 0
+    let skipped = 0
+    const existingIds = new Set(changes.map(c => c.id))
+    for (const file of Array.from(changesImportInput.files)) {
+      try {
+        const notes = await importChangeNotesFromFile(file)
+        for (const note of notes) {
+          if (note.id && existingIds.has(note.id)) {
+            skipped++
+            continue
+          }
+          // 导入的记录若缺少字段则补默认值
+          changes.push({
+            id: note.id || generateId(),
+            type: note.type || 'annotation',
+            author: note.author || 'imported',
+            timestamp: note.timestamp || new Date().toISOString(),
+            target: note.target || { docPath: '' },
+            content: note.content || { summary: '(无标题)', body: '', tags: [] },
+            status: note.status || 'pending',
+          })
+          imported++
+        }
+      } catch (e: any) {
+        alert(`文件 ${file.name} 导入失败: ${e?.message || e}`)
+      }
+    }
+    changesImportInput.value = ''
+    persistAndRefresh()
+    if (imported || skipped) {
+      alert(`导入完成：新增 ${imported} 条，跳过重复 ${skipped} 条`)
+    }
+  })
+
   // Close panels on overlay click
   annotatePanel.querySelector('.annotate-panel-overlay')!.addEventListener('click', closeAnnotatePanel)
+
+  // 初次渲染
+  changesList = document.getElementById('changes-list') as HTMLElement
+  updateChangesList()
+}
+
+// --- 持久化 ---
+function persistAndRefresh(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(changes))
+  } catch (e) {
+    // storage 不可用（隐私模式等）——静默失败
+  }
+  updateChangesList()
+}
+
+function loadFromStorage(): ChangeNote[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
 }
 
 // ============================================================
@@ -342,12 +465,11 @@ function saveAnnotate(): void {
     status: 'pending',
   }
 
-  changes.push(change)
-  downloadChangeNote(change)
-  updateChangesList()
+  changes.unshift(change)  // 新的在最上面
+  persistAndRefresh()
   closeAnnotatePanel()
 
-  // Clear form
+  // 清空表单
   ;(document.getElementById('annotate-summary') as HTMLInputElement).value = ''
   ;(document.getElementById('annotate-body') as HTMLTextAreaElement).value = ''
   ;(document.getElementById('annotate-tags') as HTMLInputElement).value = ''
@@ -363,35 +485,98 @@ function closeChangesPanel(): void {
 }
 
 function updateChangesList(): void {
-  const list = document.getElementById('changes-list')!
+  if (!changesList) return
   changesCount.textContent = changes.length.toString()
 
-  if (changes.length === 0) {
-    list.innerHTML = '<div class="changes-empty">暂无变更记录</div>'
+  // 筛选（文字 + 状态）
+  const visible = changes.filter(c => {
+    if (filterStatus !== 'all' && c.status !== filterStatus) return false
+    if (!filterText) return true
+    const haystack = [
+      c.content?.summary,
+      c.content?.body,
+      c.target?.docPath,
+      c.target?.section,
+      (c.content?.tags || []).join(' '),
+      c.id,
+    ].filter(Boolean).join(' ').toLowerCase()
+    return haystack.includes(filterText)
+  })
+
+  const downloadAllBtn = document.getElementById('changes-download-all') as HTMLButtonElement | null
+  if (downloadAllBtn) {
+    downloadAllBtn.textContent = `批量下载 (${changes.length} 条)`
+    downloadAllBtn.disabled = changes.length === 0
+  }
+
+  if (visible.length === 0) {
+    changesList.innerHTML = changes.length === 0
+      ? `<div class="changes-empty">暂无变更记录<br/><span style="font-size:11px; opacity:.6;">在文档上点 <strong>+</strong> 添加备注；或从 JSON 导入。</span></div>`
+      : `<div class="changes-empty">没有匹配的记录（共 ${changes.length} 条）</div>`
     return
   }
 
-  list.innerHTML = changes.map((c, i) => `
-    <div class="change-item">
+  changesList.innerHTML = visible.map((c, i) => `
+    <div class="change-item" data-id="${c.id}">
       <div class="change-item-header">
-        <span class="change-badge change-badge-${c.type}">${typeLabels[c.type]}</span>
+        <span class="change-badge change-badge-${c.type}">${typeLabels[c.type] || c.type}</span>
         <span class="change-id">${c.id}</span>
-        <button class="change-download" data-index="${i}" title="下载">&#8595;</button>
+        <div style="margin-left:auto; display:flex; gap:4px;">
+          <button class="change-action" data-act="download" title="下载该条">&#8595;</button>
+          <button class="change-action" data-act="status" title="点击切换状态">${statusLabels[c.status] || c.status}</button>
+          <button class="change-action" data-act="delete" title="删除">&times;</button>
+        </div>
       </div>
       <div class="change-item-title">${esc(c.content.summary)}</div>
-      <div class="change-item-meta">${esc(c.target.docPath)}</div>
-      ${c.content.tags.length ? `<div class="change-item-tags">${c.content.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="change-item-meta">${esc(c.target.docPath)}${c.target.section ? ' · ' + esc(c.target.section) : ''}</div>
+      ${c.content.body ? `<div class="change-item-body">${esc(c.content.body).replace(/\n/g, '<br/>')}</div>` : ''}
+      ${c.content.tags && c.content.tags.length ? `<div class="change-item-tags">${c.content.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="change-item-time">${formatTime(c.timestamp)} · ${esc(c.author)}</div>
     </div>
   `).join('')
 
-  // Bind download buttons
-  list.querySelectorAll('.change-download').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation()
-      const idx = parseInt((btn as HTMLElement).dataset.index || '0')
-      downloadChangeNote(changes[idx])
+  // Bind per-item actions
+  changesList.querySelectorAll('.change-item').forEach(el => {
+    const id = (el as HTMLElement).dataset.id
+    const note = changes.find(n => n.id === id)
+    if (!note) return
+
+    // 下载单条
+    el.querySelector('[data-act="download"]')?.addEventListener('click', (ev) => {
+      ev.stopPropagation()
+      downloadChangeNote(note)
+    })
+
+    // 切换状态（循环：pending → reviewed → applied → rejected → pending）
+    el.querySelector('[data-act="status"]')?.addEventListener('click', (ev) => {
+      ev.stopPropagation()
+      const order: ChangeStatus[] = ['pending', 'reviewed', 'applied', 'rejected']
+      const idx = order.indexOf(note.status)
+      note.status = order[(idx + 1) % order.length]
+      persistAndRefresh()
+    })
+
+    // 删除
+    el.querySelector('[data-act="delete"]')?.addEventListener('click', (ev) => {
+      ev.stopPropagation()
+      if (!confirm(`删除「${note.content.summary}」?`)) return
+      changes = changes.filter(n => n.id !== id)
+      persistAndRefresh()
     })
   })
+}
+
+function formatTime(iso: string): string {
+  try {
+    const d = new Date(iso)
+    const now = new Date()
+    const sameDay = d.toDateString() === now.toDateString()
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    if (sameDay) return `今天 ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  } catch {
+    return iso
+  }
 }
 
 function esc(s: string): string {
