@@ -18,16 +18,6 @@ interface DocEntry {
 // --- Directory structure definition ---
 const directoryTree: NavItem[] = [
   {
-    name: '项目关键文件',
-    path: 'root',
-    children: [
-      { name: 'AI 上下文', path: '_ai_context.md' },
-      { name: '一致性规则', path: '_consistency_rules.md' },
-      { name: '术语统一表', path: '_glossary.md' },
-      { name: '叙事风格指南', path: '_style_guide.md' },
-    ]
-  },
-  {
     name: '00 项目总览',
     path: '00_项目总览',
     children: [
@@ -317,8 +307,8 @@ async function loadDocument(path: string) {
       title = fmMatch[1]
     }
 
-    // Strip YAML front matter for rendering
-    const contentWithoutFM = rawContent.replace(/^---[\s\S]*?---\n*/, '')
+    // Strip YAML front matter for rendering (handle BOM)
+    const contentWithoutFM = rawContent.replace(/^\uFEFF?---[\s\S]*?---\n*/, '')
     
     const doc: DocEntry = {
       path,
