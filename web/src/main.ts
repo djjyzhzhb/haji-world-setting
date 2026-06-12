@@ -6,6 +6,7 @@ import { initChangesSystem, showAnnotateBtn, hideAnnotateBtn } from './ui/change
 interface NavItem {
   name: string
   path: string
+  overview?: string   // 总览文档路径，点击 section header 时加载
   children?: NavItem[]
 }
 
@@ -15,7 +16,7 @@ interface DocEntry {
   content: string
 }
 
-// --- Directory structure definition ---
+// --- Directory structure definition (recursive nesting) ---
 const directoryTree: NavItem[] = [
   {
     name: '00 项目总览',
@@ -46,9 +47,15 @@ const directoryTree: NavItem[] = [
       { name: '气候带与生态区', path: '02_地理/02_气候带与生态区.md' },
       { name: '自然资源分布', path: '02_地理/03_自然资源分布.md' },
       { name: '交通与贸易路线', path: '02_地理/04_交通与贸易路线.md' },
-      { name: '大陆A总览', path: '02_地理/05_大陆A/00_大陆A总览.md' },
-      { name: '区域A1', path: '02_地理/05_大陆A/01_区域A1.md' },
-      { name: '城市与据点索引', path: '02_地理/05_大陆A/03_城市与据点索引.md' },
+      {
+        name: '大陆A',
+        path: '02_地理/05_大陆A',
+        overview: '02_地理/05_大陆A/00_大陆A总览.md',
+        children: [
+          { name: '区域A1', path: '02_地理/05_大陆A/01_区域A1.md' },
+          { name: '城市与据点索引', path: '02_地理/05_大陆A/03_城市与据点索引.md' },
+        ]
+      },
     ]
   },
   {
@@ -66,14 +73,26 @@ const directoryTree: NavItem[] = [
     path: '04_种族与生物',
     children: [
       { name: '智慧种族总览', path: '04_种族与生物/01_智慧种族总览.md' },
-      { name: '种族A总览', path: '04_种族与生物/02_种族A/00_种族A总览.md' },
-      { name: '种族A生理与特性', path: '04_种族与生物/02_种族A/01_生理与特性.md' },
-      { name: '种族A文化与习俗', path: '04_种族与生物/02_种族A/02_文化与习俗.md' },
-      { name: '种族A历史与起源', path: '04_种族与生物/02_种族A/03_历史与起源.md' },
-      { name: '种族A种族关系', path: '04_种族与生物/02_种族A/04_与其他种族的关系.md' },
-      { name: '普通生物', path: '04_种族与生物/04_生物图鉴/01_普通生物.md' },
-      { name: '幻想生物', path: '04_种族与生物/04_生物图鉴/02_幻想生物.md' },
-      { name: '传说级存在', path: '04_种族与生物/04_生物图鉴/03_传说级存在.md' },
+      {
+        name: '种族A',
+        path: '04_种族与生物/02_种族A',
+        overview: '04_种族与生物/02_种族A/00_种族A总览.md',
+        children: [
+          { name: '生理与特性', path: '04_种族与生物/02_种族A/01_生理与特性.md' },
+          { name: '文化与习俗', path: '04_种族与生物/02_种族A/02_文化与习俗.md' },
+          { name: '历史与起源', path: '04_种族与生物/02_种族A/03_历史与起源.md' },
+          { name: '种族关系', path: '04_种族与生物/02_种族A/04_与其他种族的关系.md' },
+        ]
+      },
+      {
+        name: '生物图鉴',
+        path: '04_种族与生物/04_生物图鉴',
+        children: [
+          { name: '普通生物', path: '04_种族与生物/04_生物图鉴/01_普通生物.md' },
+          { name: '幻想生物', path: '04_种族与生物/04_生物图鉴/02_幻想生物.md' },
+          { name: '传说级存在', path: '04_种族与生物/04_生物图鉴/03_传说级存在.md' },
+        ]
+      },
     ]
   },
   {
@@ -105,10 +124,16 @@ const directoryTree: NavItem[] = [
     path: '08_力量体系',
     children: [
       { name: '力量体系总论', path: '08_力量体系/01_力量体系总论.md' },
-      { name: '体系A原理与来源', path: '08_力量体系/02_体系A/01_原理与来源.md' },
-      { name: '体系A规则与限制', path: '08_力量体系/02_体系A/02_规则与限制.md' },
-      { name: '体系A分类与层级', path: '08_力量体系/02_体系A/03_分类与层级.md' },
-      { name: '体系A能力列表', path: '08_力量体系/02_体系A/04_代表性能力列表.md' },
+      {
+        name: '体系A',
+        path: '08_力量体系/02_体系A',
+        children: [
+          { name: '原理与来源', path: '08_力量体系/02_体系A/01_原理与来源.md' },
+          { name: '规则与限制', path: '08_力量体系/02_体系A/02_规则与限制.md' },
+          { name: '分类与层级', path: '08_力量体系/02_体系A/03_分类与层级.md' },
+          { name: '能力列表', path: '08_力量体系/02_体系A/04_代表性能力列表.md' },
+        ]
+      },
       { name: '禁忌知识与危险力量', path: '08_力量体系/04_禁忌知识与危险力量.md' },
       { name: '力量与社会', path: '08_力量体系/05_力量与社会.md' },
     ]
@@ -204,71 +229,89 @@ const navTree = document.getElementById('nav-tree')!
 const searchInput = document.getElementById('search-input') as HTMLInputElement
 const contentArea = document.getElementById('content')!
 
-function renderNavTree(items: NavItem[], container: HTMLElement, filter: string = '') {
-  container.innerHTML = ''
+/**
+ * Recursively render nav items. Returns true if any item in this subtree is visible.
+ */
+function renderNavItems(
+  items: NavItem[],
+  container: HTMLElement,
+  depth: number,
+  filter: string
+): boolean {
+  let anyVisible = false
+
   for (const item of items) {
     if (item.children) {
+      // ---- Section with children ----
       const section = document.createElement('div')
       section.className = 'nav-section'
-      
+      section.dataset.depth = String(depth)
+
       const header = document.createElement('div')
       header.className = 'nav-section-header'
+      header.dataset.depth = String(depth)
       header.textContent = item.name
+
+      // Highlight header if its overview doc is currently loaded
+      if (item.overview && currentDoc && currentDoc.path === item.overview) {
+        header.classList.add('active')
+      }
+      // Mark headers that have overview content
+      if (item.overview) {
+        header.classList.add('has-overview')
+      }
+
       header.addEventListener('click', () => {
         section.classList.toggle('collapsed')
+        if (item.overview) {
+          loadDocument(item.overview)
+        }
       })
-      
+
       const childrenContainer = document.createElement('div')
       childrenContainer.className = 'nav-section-children'
-      
-      let hasVisible = false
-      for (const child of item.children) {
-        if (filter && !child.name.toLowerCase().includes(filter.toLowerCase())) {
-          continue
-        }
-        hasVisible = true
-        const link = document.createElement('a')
-        link.className = 'nav-link'
-        link.textContent = child.name
-        link.href = '#'
-        link.addEventListener('click', (e) => {
-          e.preventDefault()
-          loadDocument(child.path)
-        })
-        if (currentDoc && child.path === findCurrentPath()) {
-          link.classList.add('active')
-        }
-        childrenContainer.appendChild(link)
-      }
-      
-      if (hasVisible || !filter) {
+
+      const childVisible = renderNavItems(item.children, childrenContainer, depth + 1, filter)
+
+      // Visibility: show if no filter, or if own name matches, or any child is visible
+      const selfMatches = filter && item.name.toLowerCase().includes(filter.toLowerCase())
+      const visible = !filter || selfMatches || childVisible
+
+      if (visible) {
         section.appendChild(header)
         section.appendChild(childrenContainer)
         container.appendChild(section)
       }
+      anyVisible = anyVisible || visible
     } else {
+      // ---- Leaf item (no children) ----
       if (filter && !item.name.toLowerCase().includes(filter.toLowerCase())) {
         continue
       }
+      anyVisible = true
+
       const link = document.createElement('a')
-      link.className = 'nav-link top-level'
+      link.className = 'nav-link'
+      link.dataset.depth = String(depth)
       link.textContent = item.name
       link.href = '#'
       link.addEventListener('click', (e) => {
         e.preventDefault()
         loadDocument(item.path)
       })
+      if (currentDoc && currentDoc.path === item.path) {
+        link.classList.add('active')
+      }
       container.appendChild(link)
     }
   }
+
+  return anyVisible
 }
 
-function findCurrentPath(): string {
-  // Find which document is currently loaded
-  for (const [p] of docs) {
-    if (docs.get(p) === currentDoc) return p
-  }
-  return ''
+function renderNavTree(items: NavItem[], container: HTMLElement, filter: string = '') {
+  container.innerHTML = ''
+  renderNavItems(items, container, 0, filter)
 }
 
 // --- Load document ---
@@ -278,7 +321,7 @@ async function loadDocument(path: string) {
     const doc = docs.get(path)!
     currentDoc = doc
     renderContent(doc)
-    updateActiveLink(path)
+    updateActiveStates(path)
     return
   }
 
@@ -319,7 +362,7 @@ async function loadDocument(path: string) {
     docs.set(path, doc)
     currentDoc = doc
     renderContent(doc)
-    updateActiveLink(path)
+    updateActiveStates(path)
   } catch (err) {
     contentArea.innerHTML = `<div class="content-error">
       <h3>无法加载文档</h3>
@@ -356,7 +399,12 @@ function renderContent(doc: DocEntry) {
   })
 }
 
-function updateActiveLink(path: string) {
+/**
+ * Update active states: highlight matching nav-link AND section-header.
+ * Also expand all ancestor sections when a doc is loaded.
+ */
+function updateActiveStates(path: string) {
+  // Update nav-link active states
   document.querySelectorAll('.nav-link').forEach(el => {
     el.classList.remove('active')
     const href = (el as HTMLAnchorElement).href
@@ -364,10 +412,41 @@ function updateActiveLink(path: string) {
       el.classList.add('active')
     }
   })
-  // Expand the parent section
+
+  // Update section-header active states (for overview docs)
+  document.querySelectorAll('.nav-section-header').forEach(el => {
+    el.classList.remove('active')
+  })
+  // Find section header whose overview matches this path
+  for (const item of findAllItems(directoryTree)) {
+    if (item.overview === path) {
+      const headers = document.querySelectorAll('.nav-section-header')
+      headers.forEach(h => {
+        if (h.textContent === item.name) {
+          h.classList.add('active')
+        }
+      })
+    }
+  }
+
+  // Expand all sections (so the active item is visible)
   document.querySelectorAll('.nav-section').forEach(el => {
     el.classList.remove('collapsed')
   })
+}
+
+/**
+ * Flatten all NavItems (recursively) for lookup.
+ */
+function findAllItems(items: NavItem[]): NavItem[] {
+  const result: NavItem[] = []
+  for (const item of items) {
+    result.push(item)
+    if (item.children) {
+      result.push(...findAllItems(item.children))
+    }
+  }
+  return result
 }
 
 // --- Search ---
