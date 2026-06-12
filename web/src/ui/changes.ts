@@ -115,20 +115,57 @@ export function initChangesSystem(): void {
 
   // Close panels on overlay click
   annotatePanel.querySelector('.annotate-panel-overlay')!.addEventListener('click', closeAnnotatePanel)
+
+  // Bind button self-hover so moving from text → button keeps it visible
+  bindAnnotateBtnHover()
 }
 
-// --- Show/hide annotate button on hover ---
+// --- Show/hide annotate button — 统一显示/隐藏逻辑 ---
+// 设计目标：
+//   1. 鼠标从文本移动到按钮本身时，按钮不应中途消失
+//   2. 离开整个内容区/按钮一小段延迟后才真正隐藏（给鼠标移动留出时间）
+//   3. 触屏设备：点击文本元素后按钮常驻，点击按钮或空白处再消失
+let hideTimer: number | null = null
+
+function cancelPendingHide(): void {
+  if (hideTimer !== null) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+}
+
+function scheduleHide(delayMs: number = 250): void {
+  cancelPendingHide()
+  hideTimer = window.setTimeout(() => {
+    hideAnnotateBtn()
+    hideTimer = null
+  }, delayMs)
+}
+
 export function showAnnotateBtn(docPath: string, section: string | null): void {
   currentDocPath = docPath
   currentSection = section
+  cancelPendingHide()
   annotateBtn.classList.add('visible')
 }
 
 export function hideAnnotateBtn(): void {
-  setTimeout(() => {
-    annotateBtn.classList.remove('visible')
-  }, 200)
+  annotateBtn.classList.remove('visible')
 }
+
+export function scheduleHideAnnotateBtn(delayMs: number = 250): void {
+  scheduleHide(delayMs)
+}
+
+// 按钮自身也要参与 hover 判定：悬停在按钮上时取消隐藏
+function bindAnnotateBtnHover(): void {
+  annotateBtn.addEventListener('pointerenter', cancelPendingHide)
+  annotateBtn.addEventListener('pointerleave', () => scheduleHide(150))
+}
+
+// 移动端 / 备用点击逻辑：按钮在 visible 状态下接收 click 即可
+// （showAnnotateBtn 已处理 visible 态，这里无需额外绑定）
+
 
 // --- Annotate panel ---
 function openAnnotatePanel(): void {
