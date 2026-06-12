@@ -401,38 +401,52 @@ function renderContent(doc: DocEntry) {
 
 /**
  * Update active states: highlight matching nav-link AND section-header.
- * Also expand all ancestor sections when a doc is loaded.
+ * Only expand ancestor sections of the loaded doc — never touch other sections.
  */
 function updateActiveStates(path: string) {
-  // Update nav-link active states
-  document.querySelectorAll('.nav-link').forEach(el => {
-    el.classList.remove('active')
-    const href = (el as HTMLAnchorElement).href
-    if (href.includes(encodeURIComponent(path))) {
-      el.classList.add('active')
-    }
-  })
+  // 1. Clear old active states (only on currently active elements — fast)
+  document.querySelectorAll('.nav-link.active').forEach(el => el.classList.remove('active'))
+  document.querySelectorAll('.nav-section-header.active').forEach(el => el.classList.remove('active'))
 
-  // Update section-header active states (for overview docs)
-  document.querySelectorAll('.nav-section-header').forEach(el => {
-    el.classList.remove('active')
-  })
-  // Find section header whose overview matches this path
-  for (const item of findAllItems(directoryTree)) {
-    if (item.overview === path) {
-      const headers = document.querySelectorAll('.nav-section-header')
-      headers.forEach(h => {
-        if (h.textContent === item.name) {
-          h.classList.add('active')
-        }
-      })
+  // 2. Find and highlight the matching nav-link
+  const links = document.querySelectorAll('.nav-link')
+  let activeEl: Element | null = null
+  for (const link of links) {
+    if ((link as HTMLAnchorElement).href.includes(encodeURIComponent(path))) {
+      link.classList.add('active')
+      activeEl = link
+      break
     }
   }
 
-  // Expand all sections (so the active item is visible)
-  document.querySelectorAll('.nav-section').forEach(el => {
-    el.classList.remove('collapsed')
-  })
+  // 3. If this is an overview doc, also highlight the matching section header
+  if (activeEl) {
+    // Expand ancestor sections only
+    let parent: HTMLElement | null = activeEl.closest('.nav-section')
+    while (parent) {
+      parent.classList.remove('collapsed')
+      parent = (parent.parentElement?.closest('.nav-section') as HTMLElement) || null
+    }
+  } else {
+    // Could be an overview doc — find section header by name
+    for (const item of findAllItems(directoryTree)) {
+      if (item.overview === path) {
+        const headers = document.querySelectorAll('.nav-section-header')
+        for (const h of headers) {
+          if (h.textContent === item.name) {
+            h.classList.add('active')
+            let parent: HTMLElement | null = (h.parentElement as HTMLElement).closest('.nav-section')
+            while (parent) {
+              parent.classList.remove('collapsed')
+              parent = (parent.parentElement?.closest('.nav-section') as HTMLElement) || null
+            }
+            break
+          }
+        }
+        break
+      }
+    }
+  }
 }
 
 /**
