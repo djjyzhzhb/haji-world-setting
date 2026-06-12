@@ -873,43 +873,52 @@ body {
   background: #fafafa;
 }
 
-/* 搜索框 —— 浅色背景专用：白底 + 黑色字 + 左侧放大镜图标，一眼就知道是搜索 */
-.changes-panel-toolbar input[type="text"] {
+/* 搜索框 —— 浅色面板专用：白底黑字 + 放大镜图标，完全独立，不继承任何默认搜索类 */
+.panel-search-input {
   flex: 1;
-  padding: 7px 10px 7px 32px;
-  border: 1px solid #d9d4e0;
-  border-radius: 5px;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'%3E%3C/circle%3E%3Cpath d='M21 21l-4.35-4.35'%3E%3C/path%3E%3C/svg%3E") no-repeat 10px center;
-  background-size: 14px;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid #c8bfd4;
+  border-radius: 6px;
+  background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'%3E%3C/circle%3E%3Cpath d='M21 21l-4.35-4.35'%3E%3C/path%3E%3C/svg%3E") no-repeat 12px center;
+  background-size: 15px 15px;
   color: #2c2430;
-  font-size: 12px;
+  font-size: 13px;
   font-family: inherit;
+  line-height: 1.4;
   outline: none;
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
-.changes-panel-toolbar input[type="text"]::placeholder {
-  color: #999;
+.panel-search-input::placeholder {
+  color: #8a8299;
 }
 
-.changes-panel-toolbar input[type="text"]:focus {
-  border-color: var(--accent);
+.panel-search-input:focus {
+  border-color: #7c5cbf;
+  box-shadow: 0 0 0 3px rgba(124, 92, 191, 0.15);
 }
 
-/* 状态筛选下拉 */
-.changes-panel-toolbar select {
-  padding: 7px 10px;
-  border: 1px solid #d9d4e0;
-  border-radius: 5px;
-  background: #fff;
+/* 状态筛选下拉 —— 浅色面板专用 */
+.panel-status-select {
+  padding: 8px 12px;
+  border: 1px solid #c8bfd4;
+  border-radius: 6px;
+  background: #ffffff;
   color: #2c2430;
-  font-size: 12px;
+  font-size: 13px;
   font-family: inherit;
+  line-height: 1.4;
   outline: none;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.changes-panel-toolbar select:focus {
-  border-color: var(--accent);
+.panel-status-select:focus {
+  border-color: #7c5cbf;
+  box-shadow: 0 0 0 3px rgba(124, 92, 191, 0.15);
 }
 
 .changes-panel-footer {

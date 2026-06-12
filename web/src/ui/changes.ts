@@ -24,7 +24,6 @@ let changesPanel: HTMLElement
 let changesToggle: HTMLElement
 let changesCount: HTMLElement
 let changesList: HTMLElement
-let changesSearch: HTMLInputElement | null = null
 let changesImportInput: HTMLInputElement | null = null
 
 // --- Type labels ---
@@ -106,8 +105,8 @@ export function initChangesSystem(): void {
       <button class="changes-panel-close" id="changes-close">&times;</button>
     </div>
     <div class="changes-panel-toolbar">
-      <input type="text" id="changes-search" class="search-input" placeholder="搜索标题 / 文档 / 标签..." />
-      <select id="changes-status-filter" class="search-input" style="font-size:12px;">
+      <input type="text" class="panel-search-input" placeholder="搜索标题 / 文档 / 标签..." />
+      <select class="panel-status-select">
         <option value="all">全部状态</option>
         <option value="pending">待处理</option>
         <option value="reviewed">已审阅</option>
@@ -158,15 +157,17 @@ export function initChangesSystem(): void {
     }
   })
 
-  // 搜索 / 筛选
-  changesSearch = document.getElementById('changes-search') as HTMLInputElement
-  changesSearch?.addEventListener('input', () => {
-    filterText = changesSearch?.value.trim().toLowerCase() || ''
+  // 搜索 / 筛选 —— 直接在面板上查元素，查不到就明确报错（避免可选链静默死掉）
+  const searchInput = changesPanel.querySelector('.panel-search-input') as HTMLInputElement | null
+  const statusSelect = changesPanel.querySelector('.panel-status-select') as HTMLSelectElement | null
+  if (!searchInput) throw new Error('[changes.ts] 未找到 .panel-search-input')
+  if (!statusSelect) throw new Error('[changes.ts] 未找到 .panel-status-select')
+  searchInput.addEventListener('input', () => {
+    filterText = searchInput.value.trim().toLowerCase()
     updateChangesList()
   })
-  const statusFilter = document.getElementById('changes-status-filter') as HTMLSelectElement
-  statusFilter?.addEventListener('change', () => {
-    filterStatus = statusFilter.value as 'all' | ChangeStatus
+  statusSelect.addEventListener('change', () => {
+    filterStatus = statusSelect.value as 'all' | ChangeStatus
     updateChangesList()
   })
 
