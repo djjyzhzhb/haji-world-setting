@@ -1042,3 +1042,164 @@ body {
   justify-content: center;
   line-height: 1;
 }
+
+/* ============================================
+   Badges (角标) — 显示段落中的记录数量
+   ============================================ */
+.annotate-badge {
+  position: absolute;
+  top: 4px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #e2715a;            /* 默认 pending 色 (橙红) */
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 5;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.annotate-badge:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+
+.annotate-badge-pending  { background: #e2715a; }  /* 待处理 — 橙红 */
+.annotate-badge-reviewed { background: #8b7cc7; }  /* 已审阅 — 紫 */
+.annotate-badge-applied  { background: #4d9b6e; }  /* 已应用 — 绿 */
+.annotate-badge-rejected { background: #7a7a7a; }  /* 已忽略 — 灰 */
+
+/* 标题/段落内 badge 间距微调整 */
+h2 .annotate-badge, h3 .annotate-badge {
+  top: 2px;
+  right: 2px;
+}
+
+/* ============================================
+   Badge Popover (气泡) — 点击角标后的浮动面板
+   ============================================ */
+.badge-popover {
+  position: fixed;
+  z-index: 300;
+  min-width: 280px;
+  max-width: 380px;
+  background: #ffffff;
+  border: 1px solid #c8bfd4;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(30,27,46,0.25);
+  animation: popover-in 0.15s ease-out;
+}
+
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.badge-popover-inner {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+}
+
+.badge-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ece6f5;
+  font-size: 12px;
+  color: #2c2430;
+}
+
+.badge-popover-close {
+  background: none;
+  border: none;
+  color: #8a7d9e;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  font-family: inherit;
+}
+
+.badge-popover-close:hover { color: #2c2430; }
+
+.badge-popover-list {
+  overflow-y: auto;
+  max-height: 220px;
+}
+
+.badge-popover-item {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f4f0fa;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.badge-popover-item:last-child { border-bottom: none; }
+
+.badge-popover-item:hover { background: #f7f4fc; }
+
+.badge-popover-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.badge-popover-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c2430;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge-popover-snippet {
+  font-size: 12px;
+  color: #5a4d6d;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge-popover-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #8a7d9e;
+}
+
+.badge-popover-footer {
+  padding: 8px 12px;
+  border-top: 1px solid #ece6f5;
+  font-size: 11px;
+  color: #8a7d9e;
+  text-align: center;
+  background: #faf8fd;
+  border-radius: 0 0 8px 8px;
+}
+
+/* ============================================
+   Change Panel Item Highlight
+   ============================================ */
+.change-item-highlight {
+  animation: highlight-pulse 2.4s ease-out;
+}
+
+@keyframes highlight-pulse {
+  0%   { background: #fff8d6; box-shadow: 0 0 0 2px #d97706; border-radius: 4px; }
+  30%  { background: #fff8d6; box-shadow: 0 0 0 2px #d97706; border-radius: 4px; }
+  100% { background: transparent; box-shadow: 0 0 0 0 transparent; border-radius: 0; }
+}

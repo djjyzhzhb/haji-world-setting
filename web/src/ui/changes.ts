@@ -4,14 +4,20 @@ import {
   downloadChangeNote,
   downloadAllChanges,
   importChangeNotesFromFile,
+  computeTargetKey,
+  ensureTargetKey,
 } from '../api'
 
 const STORAGE_KEY = 'app.changeNotes.v1'
 
 // --- Session state ---
-let changes: ChangeNote[] = loadFromStorage()
+let changes: ChangeNote[] = loadFromStorage().map(ensureTargetKey)
 let currentDocPath: string | null = null
 let currentSection: string | null = null
+let currentTargetEl: HTMLElement | null = null   // 当前 hover 的文本元素
+let currentTargetKey: string | null = null      // 对应计算出的 key
+let badgeContainer: HTMLElement | null = null   // 最近一次渲染角标的容器
+let badgeDocPath: string = ''                   // 最近一次的 docPath
 
 // 可选筛选条件
 let filterText = ''
@@ -228,6 +234,10 @@ function persistAndRefresh(): void {
     // storage 不可用（隐私模式等）——静默失败
   }
   updateChangesList()
+  // 同步刷新当前可见内容的角标（如果有）
+  if (badgeContainer && badgeDocPath) {
+    scanAndRenderBadges(badgeContainer, badgeDocPath)
+  }
 }
 
 function loadFromStorage(): ChangeNote[] {
@@ -307,7 +317,7 @@ export function bindAnnotateZones(
   getDocPath: () => string
 ): void {
 
-  // ---------- 悬停（鼠标/笔）：显示按钮 ----------
+  // ---------- 悬停（鼠标/笔）：显示按钮 + 记录 targetKey ----------
   container.addEventListener('pointerover', (ev) => {
     // 仅对"进入文本区"的事件作出响应
     const targetEl = (ev.target as Element)?.closest?.(selector) as HTMLElement | null
@@ -319,8 +329,12 @@ export function bindAnnotateZones(
     // 进入钉住模式时也允许 hover 覆盖（移动到其他段落就更新位置）
     stickModeEl = null
 
-    currentDocPath = getDocPath()
+    const docPath = getDocPath()
+    currentDocPath = docPath
     currentSection = sectionLabelFor(targetEl)
+    currentTargetEl = targetEl
+    currentTargetKey = computeTargetKey(docPath, targetEl)
+
     positionBtnNextTo(targetEl)
     showNow()
   })
@@ -386,8 +400,12 @@ export function bindAnnotateZones(
     // 只有触屏才用点击来钉住；鼠标由 hover 负责
     if (!isTouch) return
 
-    currentDocPath = getDocPath()
+    const docPath = getDocPath()
+    currentDocPath = docPath
     currentSection = sectionLabelFor(targetEl)
+    currentTargetEl = targetEl
+    currentTargetKey = computeTargetKey(docPath, targetEl)
+
     positionBtnNextTo(targetEl)
 
     if (stickModeEl === targetEl) {
@@ -419,8 +437,201 @@ export function scheduleHideAnnotateBtn(delayMs: number = 250): void {
   requestHide(delayMs)
 }
 
-// 旧的 bindAnnotateBtnHover 已并入 bindAnnotateZones，不单独暴露
+// ============================================================
+// Badge / Popover 角标系统
+// ============================================================
+//
+// 交互流程：
+//   1. 每次渲染内容后 → scanAndRenderBadges(container, docPath)
+//   2. 对每个 h2/h3/p 计算 targetKey → 如果有匹配的 note → 加角标
+//   3. 角标点击 → 弹出气泡，列出该段落所有记录
+//   4. 点击气泡中的条目 → 打开变更面板 + scroll + highlight 到那条
+// ============================================================
 
+let popoverEl: HTMLElement | null = null  // 当前打开的气泡（单例）
+
+/** 关闭当前的角标气泡 */
+function closeBadgePopover(): void {
+  if (popoverEl && popoverEl.parentNode) {
+    popoverEl.parentNode.removeChild(popoverEl)
+  }
+  popoverEl = null
+}
+
+/** 打开角标气泡：在 badge 附近，列出该段落所有记录 */
+function openBadgePopover(badge: HTMLElement, notes: ChangeNote[]): void {
+  closeBadgePopover()
+
+  popoverEl = document.createElement('div')
+  popoverEl.className = 'badge-popover'
+
+  const itemsHtml = notes.map(n => `
+    <div class="badge-popover-item" data-id="${n.id}">
+      <span class="change-badge change-badge-${n.type}">${typeLabels[n.type] || n.type}</span>
+      <div class="badge-popover-body">
+        <div class="badge-popover-title">${esc(n.content.summary)}</div>
+        ${n.content.body ? `<div class="badge-popover-snippet">${esc(n.content.body.slice(0, 60))}${n.content.body.length > 60 ? '...' : ''}</div>` : ''}
+        <div class="badge-popover-meta">${formatTime(n.timestamp)} · ${statusLabels[n.status] || n.status}</div>
+      </div>
+    </div>
+  `).join('')
+
+  popoverEl.innerHTML = `
+    <div class="badge-popover-arrow"></div>
+    <div class="badge-popover-inner">
+      <div class="badge-popover-header">
+        <strong>${notes.length} 条记录</strong>
+        <button class="badge-popover-close" title="关闭">×</button>
+      </div>
+      <div class="badge-popover-list">${itemsHtml}</div>
+      <div class="badge-popover-footer">点击任意记录在变更面板中查看详情</div>
+    </div>
+  `
+
+  // 先挂到 DOM 让它有尺寸，再定位
+  document.body.appendChild(popoverEl)
+
+  // 定位到 badge 附近（优先右侧，不够空间放左侧；优先下方，不够放上）
+  const badgeRect = badge.getBoundingClientRect()
+  const popRect = popoverEl.getBoundingClientRect()
+  const margin = 8
+  const viewportW = window.innerWidth
+  const viewportH = window.innerHeight
+
+  // 水平：优先右边
+  let left = badgeRect.right + margin
+  if (left + popRect.width > viewportW - 8) {
+    left = Math.max(8, badgeRect.left - popRect.width - margin)
+  }
+  // 垂直：优先下方
+  let top = badgeRect.top + badgeRect.height + margin
+  if (top + popRect.height > viewportH - 8) {
+    top = Math.max(8, badgeRect.top - popRect.height - margin)
+  }
+
+  popoverEl.style.left = `${left}px`
+  popoverEl.style.top = `${top}px`
+
+  // 事件绑定
+  popoverEl.querySelector('.badge-popover-close')!.addEventListener('click', (e) => {
+    e.stopPropagation()
+    closeBadgePopover()
+  })
+
+  // 点列表项 → 打开面板并定位
+  popoverEl.querySelectorAll('.badge-popover-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const noteId = (item as HTMLElement).dataset.id || ''
+      openChangesPanelAndHighlight(noteId)
+      closeBadgePopover()
+    })
+  })
+
+  // 气泡外层点击不被当作"点空白关闭"（由 document 监听器处理）
+  popoverEl.addEventListener('pointerdown', (e) => e.stopPropagation())
+}
+
+/** 打开变更面板、清除筛选、滚动到指定记录、高亮 */
+function openChangesPanelAndHighlight(noteId: string): void {
+  if (!changesPanel) return
+  // 1. 打开面板
+  changesPanel.classList.add('open')
+
+  // 2. 重置搜索/筛选 → 确保记录可见
+  filterText = ''
+  filterStatus = 'all'
+  const searchInput = changesPanel.querySelector('.panel-search-input') as HTMLInputElement | null
+  const statusSelect = changesPanel.querySelector('.panel-status-select') as HTMLSelectElement | null
+  if (searchInput) searchInput.value = ''
+  if (statusSelect) statusSelect.value = 'all'
+
+  // 3. 重渲染列表
+  updateChangesList()
+
+  // 4. 滚动到目标条目并高亮
+  requestAnimationFrame(() => {
+    const item = changesPanel.querySelector(`.change-item[data-id="${noteId}"]`) as HTMLElement | null
+    if (!item) return
+    item.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    item.classList.add('change-item-highlight')
+    window.setTimeout(() => item.classList.remove('change-item-highlight'), 2400)
+  })
+}
+
+/** 扫描内容区域，给有记录的段落加角标。在渲染内容后调用。 */
+export function scanAndRenderBadges(container: HTMLElement, docPath: string): void {
+  if (!container) return
+  badgeContainer = container
+  badgeDocPath = docPath
+  // 先清理旧角标
+  container.querySelectorAll('.annotate-badge').forEach(b => b.parentNode?.removeChild(b))
+
+  // 如果文档无记录 → 直接返回
+  const notesForDoc = changes.filter(n => n.targetKey && n.target.docPath === docPath)
+  if (!notesForDoc.length) return
+
+  // 按 targetKey 分组
+  const notesByKey = new Map<string, ChangeNote[]>()
+  for (const n of notesForDoc) {
+    if (!n.targetKey) continue
+    const list = notesByKey.get(n.targetKey) || []
+    list.push(n)
+    notesByKey.set(n.targetKey, list)
+  }
+
+  // 遍历所有候选元素
+  const elements = container.querySelectorAll('h2, h3, p') as NodeListOf<HTMLElement>
+  elements.forEach(el => {
+    const key = computeTargetKey(docPath, el)
+    const matches = notesByKey.get(key)
+    if (!matches || !matches.length) return
+
+    const badge = document.createElement('span')
+    badge.className = 'annotate-badge'
+    badge.textContent = String(matches.length)
+    badge.title = `${matches.length} 条记录：点击查看`
+
+    // 角标颜色：按最常见 status 着色
+    const statuses = matches.map(m => m.status)
+    if (statuses.every(s => s === 'applied')) {
+      badge.classList.add('annotate-badge-applied')
+    } else if (statuses.some(s => s === 'pending')) {
+      badge.classList.add('annotate-badge-pending')
+    } else if (statuses.some(s => s === 'rejected')) {
+      badge.classList.add('annotate-badge-rejected')
+    } else {
+      badge.classList.add('annotate-badge-reviewed')
+    }
+
+    // 点角标 → 弹气泡
+    badge.addEventListener('pointerdown', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      if (popoverEl && (popoverEl as any)._currentKey === key) {
+        closeBadgePopover()
+      } else {
+        ;(popoverEl as any) && closeBadgePopover()
+        openBadgePopover(badge, matches)
+        if (popoverEl) (popoverEl as any)._currentKey = key
+      }
+    })
+
+    el.style.position = getComputedStyle(el).position || 'static'
+    if (el.style.position === 'static' || !el.style.position) {
+      el.style.position = 'relative'
+    }
+    el.appendChild(badge)
+  })
+}
+
+// 全局：点文档其他地方 → 关闭气泡
+document.addEventListener('pointerdown', (ev) => {
+  const target = ev.target as HTMLElement | null
+  if (!target) return
+  if (target.closest('.badge-popover') || target.closest('.annotate-badge')) return
+  closeBadgePopover()
+})
 
 // --- Annotate panel ---
 function openAnnotatePanel(): void {
@@ -449,6 +660,17 @@ function saveAnnotate(): void {
     return
   }
 
+  const elType = currentTargetEl
+    ? currentTargetEl.tagName.toLowerCase()
+    : ''
+  const elText = currentTargetEl
+    ? (currentTargetEl.textContent || '').trim().slice(0, 60)
+    : ''
+  const tKey = currentTargetKey
+    || (currentDocPath && currentTargetEl && currentTargetEl
+      ? computeTargetKey(currentDocPath, currentTargetEl)
+      : '')
+
   const change: ChangeNote = {
     id: generateId(),
     type,
@@ -457,6 +679,8 @@ function saveAnnotate(): void {
     target: {
       docPath: currentDocPath || '',
       section: currentSection || undefined,
+      elementType: elType || undefined,
+      elementText: elText || undefined,
     },
     content: {
       summary,
@@ -464,6 +688,7 @@ function saveAnnotate(): void {
       tags,
     },
     status: 'pending',
+    targetKey: tKey,
   }
 
   changes.unshift(change)  // 新的在最上面

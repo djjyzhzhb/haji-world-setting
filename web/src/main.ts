@@ -1,6 +1,6 @@
 import './style.css'
 import { marked } from 'marked'
-import { initChangesSystem, bindAnnotateZones } from './ui/changes'
+import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges } from './ui/changes'
 
 // --- Types ---
 interface NavItem {
@@ -391,6 +391,8 @@ function renderContent(doc: DocEntry) {
     <h1 class="content-title">${doc.title}</h1>
     <div class="content-body">${html}</div>
   `
+  // 扫描内容，给有记录的段落加角标
+  scanAndRenderBadges(contentArea, doc.path)
 }
 
 // --- Annotate button hover/tap 绑定（只在初始化时调用一次） ---
