@@ -206,18 +206,18 @@ app.innerHTML = `
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <h1 class="sidebar-title">哈吉语<br>世界观设定集</h1>
+        <h1 class="sidebar-title">世界观设定集</h1>
         <input type="text" id="search-input" class="search-input" placeholder="搜索文档..." />
       </div>
       <nav class="nav-tree" id="nav-tree"></nav>
     </aside>
     <main class="content" id="content">
       <div class="content-placeholder">
-        <h2>哈吉语世界观设定集</h2>
+        <h2>世界观设定集</h2>
         <p>从左侧导航选择文档，或使用搜索功能查找设定。</p>
         <p style="margin-top: 1rem; color: var(--text-secondary)">
-          本项目是 <strong>人造语言创制计划</strong>（哈吉语）的子项目，<br>
-          旨在为哈吉语提供文化背景与文明土壤。
+          本设定集是一个独立的世界观构建项目，<br>
+          涵盖地理、历史、种族、文化、力量体系等多元模块。
         </p>
       </div>
     </main>
@@ -246,11 +246,20 @@ function renderNavItems(
       const section = document.createElement('div')
       section.className = 'nav-section'
       section.dataset.depth = String(depth)
+      // 所有含子项的分组默认折叠，用户点击展开时自然发现总览
+      section.classList.add('collapsed')
 
       const header = document.createElement('div')
       header.className = 'nav-section-header'
       header.dataset.depth = String(depth)
-      header.textContent = item.name
+
+      // Arrow indicator — always ▶, rotated 90° by CSS when expanded
+      const arrow = document.createElement('span')
+      arrow.className = 'nav-arrow'
+      arrow.textContent = '▶'
+      header.appendChild(arrow)
+      header.appendChild(document.createTextNode(item.name))
+      header.dataset.name = item.name
 
       // Highlight header if its overview doc is currently loaded
       if (item.overview && currentDoc && currentDoc.path === item.overview) {
@@ -264,6 +273,8 @@ function renderNavItems(
       header.addEventListener('click', () => {
         const wasCollapsed = section.classList.contains('collapsed')
         section.classList.toggle('collapsed')
+        // Sync arrow rotation immediately
+        arrow.style.transform = section.classList.contains('collapsed') ? '' : 'rotate(90deg)'
         // Only load overview when EXPANDING (was collapsed → now open)
         if (item.overview && wasCollapsed) {
           loadDocument(item.overview)
@@ -435,7 +446,7 @@ function updateActiveStates(path: string) {
         if (item.overview === path) {
           const headers = document.querySelectorAll('.nav-section-header')
           for (const h of headers) {
-            if (h.textContent === item.name) {
+            if ((h as HTMLElement).dataset.name === item.name) {
               h.classList.add('active')
               // Expand ancestors, but NOT the section containing this header
               let parent: HTMLElement | null = (h.parentElement?.parentElement?.closest('.nav-section') as HTMLElement) || null
@@ -450,6 +461,20 @@ function updateActiveStates(path: string) {
         }
       }
   }
+  // Sync all arrow transforms after state changes
+  syncArrowTransforms()
+}
+
+/**
+ * Update all .nav-arrow transforms to match their section's collapsed state.
+ */
+function syncArrowTransforms() {
+  document.querySelectorAll('.nav-section').forEach(sec => {
+    const arr = sec.querySelector('.nav-arrow') as HTMLElement | null
+    if (arr) {
+      arr.style.transform = sec.classList.contains('collapsed') ? '' : 'rotate(90deg)'
+    }
+  })
 }
 
 /**
