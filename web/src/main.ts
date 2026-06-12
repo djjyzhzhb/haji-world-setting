@@ -262,8 +262,10 @@ function renderNavItems(
       }
 
       header.addEventListener('click', () => {
+        const wasCollapsed = section.classList.contains('collapsed')
         section.classList.toggle('collapsed')
-        if (item.overview) {
+        // Only load overview when EXPANDING (was collapsed → now open)
+        if (item.overview && wasCollapsed) {
           loadDocument(item.overview)
         }
       })
@@ -429,23 +431,24 @@ function updateActiveStates(path: string) {
     }
   } else {
     // Could be an overview doc — find section header by name
-    for (const item of findAllItems(directoryTree)) {
-      if (item.overview === path) {
-        const headers = document.querySelectorAll('.nav-section-header')
-        for (const h of headers) {
-          if (h.textContent === item.name) {
-            h.classList.add('active')
-            let parent: HTMLElement | null = (h.parentElement as HTMLElement).closest('.nav-section')
-            while (parent) {
-              parent.classList.remove('collapsed')
-              parent = (parent.parentElement?.closest('.nav-section') as HTMLElement) || null
+      for (const item of findAllItems(directoryTree)) {
+        if (item.overview === path) {
+          const headers = document.querySelectorAll('.nav-section-header')
+          for (const h of headers) {
+            if (h.textContent === item.name) {
+              h.classList.add('active')
+              // Expand ancestors, but NOT the section containing this header
+              let parent: HTMLElement | null = (h.parentElement?.parentElement?.closest('.nav-section') as HTMLElement) || null
+              while (parent) {
+                parent.classList.remove('collapsed')
+                parent = (parent.parentElement?.closest('.nav-section') as HTMLElement) || null
+              }
+              break
             }
-            break
           }
+          break
         }
-        break
       }
-    }
   }
 }
 
