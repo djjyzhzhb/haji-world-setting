@@ -867,34 +867,49 @@ body {
 
 .changes-panel-toolbar {
   display: flex;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 12px;
   border-bottom: 1px solid var(--border);
   background: #fafafa;
 }
 
-.changes-panel-toolbar input {
+/* 搜索框 —— 浅色背景专用：白底 + 黑色字 + 左侧放大镜图标，一眼就知道是搜索 */
+.changes-panel-toolbar input[type="text"] {
   flex: 1;
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  padding: 7px 10px 7px 32px;
+  border: 1px solid #d9d4e0;
+  border-radius: 5px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'%3E%3C/circle%3E%3Cpath d='M21 21l-4.35-4.35'%3E%3C/path%3E%3C/svg%3E") no-repeat 10px center;
+  background-size: 14px;
+  color: #2c2430;
   font-size: 12px;
   font-family: inherit;
   outline: none;
 }
 
-.changes-panel-toolbar input:focus {
+.changes-panel-toolbar input[type="text"]::placeholder {
+  color: #999;
+}
+
+.changes-panel-toolbar input[type="text"]:focus {
   border-color: var(--accent);
 }
 
+/* 状态筛选下拉 */
 .changes-panel-toolbar select {
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  padding: 7px 10px;
+  border: 1px solid #d9d4e0;
+  border-radius: 5px;
   background: #fff;
+  color: #2c2430;
+  font-size: 12px;
   font-family: inherit;
   outline: none;
   cursor: pointer;
+}
+
+.changes-panel-toolbar select:focus {
+  border-color: var(--accent);
 }
 
 .changes-panel-footer {
