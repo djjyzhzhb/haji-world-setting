@@ -560,6 +560,8 @@ body {
   line-height: 1;
 }
 
+/* Force CDN cache refresh — build trigger */
+
 .annotate-panel-close:hover {
   color: var(--text);
 }
