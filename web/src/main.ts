@@ -1,6 +1,6 @@
 import './style.css'
 import { marked } from 'marked'
-import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges } from './ui/changes'
+import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges, scrollToNoteInContent } from './ui/changes'
 
 // --- Types ---
 interface NavItem {
@@ -212,14 +212,7 @@ app.innerHTML = `
       <nav class="nav-tree" id="nav-tree"></nav>
     </aside>
     <main class="content" id="content">
-      <div class="content-placeholder">
-        <h2>世界观设定集</h2>
-        <p>从左侧导航选择文档，或使用搜索功能查找设定。</p>
-        <p style="margin-top: 1rem; color: var(--text-secondary)">
-          本设定集是一个独立的世界观构建项目，<br>
-          涵盖地理、历史、种族、文化、力量体系等多元模块。
-        </p>
-      </div>
+      <div class="content-loading"></div>
     </main>
   </div>
 `
@@ -265,6 +258,7 @@ function renderNavItems(
       // Highlight header if its overview doc is currently loaded
       if (item.overview && currentDoc && currentDoc.path === item.overview) {
         header.classList.add('active')
+        header.classList.add('nav-pulse')
       }
       // Mark headers that have overview content
       if (item.overview) {
@@ -274,9 +268,14 @@ function renderNavItems(
       header.addEventListener('click', () => {
         const wasCollapsed = section.classList.contains('collapsed')
         section.classList.toggle('collapsed')
-        // Only load overview when EXPANDING (was collapsed → now open)
+        // Only load overview when EXPANDING AND 确实有这个 overview 文件（先检查 import.meta.glob）
         if (item.overview && wasCollapsed) {
-          loadDocument(item.overview)
+          // 先检查是否能找到这个文件，找不到就不 load，避免内容变成 error 页
+          const overviewPath = item.overview
+          const matchedPath = Object.keys(allMdImports).find(k => k.includes(overviewPath))
+          if (matchedPath) {
+            loadDocument(overviewPath)
+          }
         }
       })
 
@@ -314,6 +313,7 @@ function renderNavItems(
       })
       if (currentDoc && currentDoc.path === item.path) {
         link.classList.add('active')
+        link.classList.add('nav-pulse')
       }
       container.appendChild(link)
     }
@@ -329,6 +329,7 @@ function renderNavTree(items: NavItem[], container: HTMLElement, filter: string 
 
 // --- Load document ---
 async function loadDocument(path: string) {
+
   // Check cache
   if (docs.has(path)) {
     const doc = docs.get(path)!
@@ -387,18 +388,32 @@ async function loadDocument(path: string) {
 
 function renderContent(doc: DocEntry) {
   const html = marked.parse(doc.content) as string
+
+  if (doc.path === 'home.md') {
+    // 主页特殊渲染：居中、无标题栏，但 badge/导航仍统一处理
+    contentArea.innerHTML = `<div class="home-content">${html}</div>`
+    scanAndRenderBadges(contentArea, doc.path)
+    expandAndHighlightNav(doc.path)
+    return
+  }
+
   contentArea.innerHTML = `
     <h1 class="content-title">${doc.title}</h1>
     <div class="content-body">${html}</div>
   `
   // 扫描内容，给有记录的段落加角标
   scanAndRenderBadges(contentArea, doc.path)
+  // 展开并高亮左侧导航对应项
+  expandAndHighlightNav(doc.path)
 }
 
 // --- Annotate button hover/tap 绑定（只在初始化时调用一次） ---
 // 所有可见性判断、位置计算都在 bindAnnotateZones 内部处理（单一状态源）。
 function initAnnotateHoverSystem(): void {
-  bindAnnotateZones(contentArea, 'h2, h3, p', () => currentDoc?.path || '')
+  // 为内容区域绑定 annotate 按钮（含 h1 以支持 home.md 标题）
+  bindAnnotateZones(contentArea, 'h1, h2, h3, p', () => {
+    return currentDoc?.path || ''
+  })
 }
 
 /**
@@ -466,12 +481,130 @@ function findAllItems(items: NavItem[]): NavItem[] {
   return result
 }
 
+/**
+ * 找到目标 path 对应的项以及它的所有祖先分组（从上到下，根到父）
+ */
+function findItemAndAncestors(items: NavItem[], targetPath: string): NavItem[] {
+  const path: NavItem[] = []
+  function dfs(level: NavItem[]): boolean {
+    for (const item of level) {
+      path.push(item)
+      // 是否是目标 leaf？
+      if (!item.children && item.path === targetPath) return true
+      // 是否是目标 section（overview）？
+      if (item.overview === targetPath) return true
+      // 向下递归子项
+      if (item.children && dfs(item.children)) return true
+      // 不是这条路径，回溯
+      path.pop()
+    }
+    return false
+  }
+  dfs(items)
+  return path
+}
+
+/**
+ * 展开左侧导航到目标 path，并高亮目标项（加脉冲动画），滚动到可见区域
+ */
+function expandAndHighlightNav(path: string) {
+  const navTreeEl = document.getElementById('nav-tree')!
+  // 先重新渲染一次（确保 active/高亮能更新），然后处理展开+高亮
+  renderNavTree(directoryTree, navTreeEl)
+
+  const allItems = findAllItems(directoryTree)
+  const ancestors = findItemAndAncestors(directoryTree, path)
+  const sections = navTreeEl.querySelectorAll<HTMLElement>('.nav-section') as NodeListOf<HTMLElement>
+  const headers = navTreeEl.querySelectorAll<HTMLElement>('.nav-section-header') as NodeListOf<HTMLElement>
+  const links = navTreeEl.querySelectorAll<HTMLElement>('.nav-link') as NodeListOf<HTMLElement>
+
+  // 展开所有祖先分组
+  for (const item of ancestors) {
+    if (!item.children) continue // leaf，跳过
+    // 找对应 section，移除 collapsed
+    for (const sec of sections) {
+      const h = sec.querySelector('.nav-section-header') as HTMLElement | null
+      if (h && h.dataset.name === item.name) {
+        sec.classList.remove('collapsed')
+        break
+      }
+    }
+  }
+
+  // 找到目标项
+  const targetItem = allItems.find(i => i.path === path || i.overview === path)
+  if (!targetItem) return
+
+  // 找到目标元素（link 或 section-header）
+  let targetEl: HTMLElement | null = null
+  for (const link of links) {
+    if (link.textContent?.trim() === targetItem.name) {
+      targetEl = link
+      break
+    }
+  }
+  if (!targetEl && targetItem.overview) {
+    for (const header of headers) {
+      if (header.dataset.name === targetItem.name) {
+        targetEl = header
+        break
+      }
+    }
+  }
+
+  if (targetEl) {
+    // 滚动到可见区域
+    targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    // 加永久高亮（不消失）
+    targetEl.classList.add('nav-pulse')
+  }
+}
+
 // --- Search ---
 searchInput.addEventListener('input', () => {
   renderNavTree(directoryTree, navTree, searchInput.value.trim())
 })
 
+// --- 跨文档定位：当变更面板「定位」按钮按下且目标文档不在当前显示时，自动切换文档
+window.addEventListener('change-locate-doc', ((ev: CustomEvent) => {
+  const { docPath, noteId } = (ev.detail || {}) as { docPath: string; noteId?: string }
+  if (!docPath) return
+  // 如果当前已渲染这个文档则忽略
+  if (currentDoc && currentDoc.path === docPath) {
+    if (noteId) scrollToNoteInContent(noteId)
+    // 展开并高亮左侧导航（防止之前被折叠）
+    expandAndHighlightNav(docPath)
+    return
+  }
+  // 尝试按 path 匹配并加载
+  loadDocument(docPath)
+  // 文档加载是异步的（import.meta.glob），等一次 render 之后再滚动并高亮
+  setTimeout(() => {
+    if (noteId && currentDoc && currentDoc.path === docPath) {
+      scrollToNoteInContent(noteId)
+    }
+  }, 200)
+  ev.preventDefault()
+}) as EventListener)
+
+// --- 同文档定位时展开左侧导航（监听 change-expand-nav 事件）---
+window.addEventListener('change-expand-nav', ((ev: CustomEvent) => {
+  const { docPath } = (ev.detail || {}) as { docPath?: string }
+  if (!docPath) return
+  expandAndHighlightNav(docPath)
+}) as EventListener)
+
 // --- Init ---
 renderNavTree(directoryTree, navTree)
 initChangesSystem()
 initAnnotateHoverSystem()
+// 初始自动加载主页
+loadDocument('home.md')
+
+// --- Sidebar Title Click: Return to Home Page ---
+const sidebarTitle = document.querySelector('.sidebar-title') as HTMLElement
+if (sidebarTitle) {
+  sidebarTitle.addEventListener('click', () => {
+    loadDocument('home.md')
+  })
+}

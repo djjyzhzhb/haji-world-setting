@@ -1,4 +1,4 @@
-import type { ChangeNote, ChangeType, ChangeStatus } from '../api'
+import type { ChangeNote, ChangeType, ChangeStatus, ChangePriority } from '../api'
 import {
   generateId,
   downloadChangeNote,
@@ -6,7 +6,11 @@ import {
   importChangeNotesFromFile,
   computeTargetKey,
   ensureTargetKey,
+  findElementForNote,
+  computeElementIndex,
+  computeBreadcrumb,
 } from '../api'
+import { marked } from 'marked'
 
 const STORAGE_KEY = 'app.changeNotes.v1'
 
@@ -18,6 +22,7 @@ let currentTargetEl: HTMLElement | null = null   // 当前 hover 的文本元素
 let currentTargetKey: string | null = null      // 对应计算出的 key
 let badgeContainer: HTMLElement | null = null   // 最近一次渲染角标的容器
 let badgeDocPath: string = ''                   // 最近一次的 docPath
+let editingNoteId: string | null = null  // 当前正在编辑的记录 ID
 
 // 可选筛选条件
 let filterText = ''
@@ -45,6 +50,13 @@ const statusLabels: Record<ChangeStatus, string> = {
   reviewed: '已审阅',
   applied: '已应用',
   rejected: '已忽略',
+}
+
+const priorityLabels: Record<ChangePriority, string> = {
+  low: '低',
+  medium: '中',
+  high: '高',
+  critical: '紧急',
 }
 
 // --- Initialize ---
@@ -87,11 +99,37 @@ export function initChangesSystem(): void {
         </div>
         <div class="annotate-field">
           <label>内容</label>
+          <div class="annotate-format-toolbar">
+            <button type="button" data-fmt="bold" title="粗体">B</button>
+            <button type="button" data-fmt="italic" title="斜体"><em>I</em></button>
+            <button type="button" data-fmt="link" title="链接">🔗</button>
+            <button type="button" data-fmt="list" title="无序列表">•</button>
+            <button type="button" data-fmt="quote" title="引用">❝</button>
+            <button type="button" data-fmt="code" title="代码块">&lt;/&gt;</button>
+          </div>
           <textarea id="annotate-body" rows="5" placeholder="详细内容..."></textarea>
         </div>
         <div class="annotate-field">
           <label>标签（逗号分隔）</label>
           <input type="text" id="annotate-tags" placeholder="颜色, 认知, 语言" />
+        </div>
+        <div class="annotate-field">
+          <label>优先级</label>
+          <select id="annotate-priority">
+            <option value="">（默认）</option>
+            <option value="low">低</option>
+            <option value="medium">中</option>
+            <option value="high">高</option>
+            <option value="critical">紧急</option>
+          </select>
+        </div>
+        <div class="annotate-field">
+          <label>引用/参考来源</label>
+          <input type="text" id="annotate-reference" placeholder="其他文档路径、外部链接等" />
+        </div>
+        <div class="annotate-field">
+          <label>关联文档（逗号分隔）</label>
+          <input type="text" id="annotate-related" placeholder="02_地理/01_世界地图与总览, 03_历史与年表/01_大年表" />
         </div>
       </div>
       <div class="annotate-panel-footer">
@@ -163,6 +201,9 @@ export function initChangesSystem(): void {
     }
   })
 
+  // 初始化快捷键
+  initFmtToolbar()
+
   // 搜索 / 筛选 —— 直接在面板上查元素，查不到就明确报错（避免可选链静默死掉）
   const searchInput = changesPanel.querySelector('.panel-search-input') as HTMLInputElement | null
   const statusSelect = changesPanel.querySelector('.panel-status-select') as HTMLSelectElement | null
@@ -195,7 +236,7 @@ export function initChangesSystem(): void {
             skipped++
             continue
           }
-          // 导入的记录若缺少字段则补默认值
+          // 导入的记录若缺少字段则补默认值（importChangeNotesFromFile 已 ensureTargetKey）
           changes.push({
             id: note.id || generateId(),
             type: note.type || 'annotation',
@@ -204,6 +245,7 @@ export function initChangesSystem(): void {
             target: note.target || { docPath: '' },
             content: note.content || { summary: '(无标题)', body: '', tags: [] },
             status: note.status || 'pending',
+            targetKey: note.targetKey || '',
           })
           imported++
         }
@@ -559,70 +601,142 @@ function openChangesPanelAndHighlight(noteId: string): void {
   })
 }
 
-/** 扫描内容区域，给有记录的段落加角标。在渲染内容后调用。 */
+/** 按 status 给角标着色 */
+function pickBadgeColorClass(badge: HTMLElement, notes: ChangeNote[]): void {
+  const statuses = notes.map(n => n.status)
+  if (statuses.every(s => s === 'applied')) {
+    badge.classList.add('annotate-badge-applied')
+  } else if (statuses.some(s => s === 'pending')) {
+    badge.classList.add('annotate-badge-pending')
+  } else if (statuses.some(s => s === 'rejected')) {
+    badge.classList.add('annotate-badge-rejected')
+  } else {
+    badge.classList.add('annotate-badge-reviewed')
+  }
+}
+
+/**
+ * 扫描内容区域，给有记录的段落加角标。
+ *
+ * 策略（多级匹配，避免单一 targetKey 失配导致仅第一条显示）：
+ *   1) 先遍历所有候选段落元素，为每个元素收集"属于它"的 note
+ *      —— 对每个 note 挑出最佳匹配元素（分数最高者），
+ *         这保证旧笔记（section 或 elementText 不同）也能挂上新渲染的段落。
+ *   2) 角标使用 position: fixed，放在 body 下，避免被任何父容器 overflow 裁剪。
+ *   3) 滚动/尺寸变化时重新定位。
+ */
+let _badgeRepositionFn: (() => void) | null = null
+
 export function scanAndRenderBadges(container: HTMLElement, docPath: string): void {
   if (!container) return
   badgeContainer = container
   badgeDocPath = docPath
-  // 先清理旧角标
-  container.querySelectorAll('.annotate-badge').forEach(b => b.parentNode?.removeChild(b))
 
-  // 如果文档无记录 → 直接返回
-  const notesForDoc = changes.filter(n => n.targetKey && n.target.docPath === docPath)
+  // 先清理旧角标（body 下 + 旧逻辑残留的容器内）
+  document.querySelectorAll('.annotate-badge').forEach(b => b.parentNode?.removeChild(b))
+
+  // 本文档所有变更记录
+  const notesForDoc = changes.filter(n => n.target && n.target.docPath === docPath)
   if (!notesForDoc.length) return
 
-  // 按 targetKey 分组
-  const notesByKey = new Map<string, ChangeNote[]>()
-  for (const n of notesForDoc) {
-    if (!n.targetKey) continue
-    const list = notesByKey.get(n.targetKey) || []
-    list.push(n)
-    notesByKey.set(n.targetKey, list)
+  // 步骤 1：为每段元素收集归属 note。
+  // 使用 "每个 note 挑最佳元素" → 反向构建 element→notes[] 映射。
+  const notesByElement = new Map<HTMLElement, ChangeNote[]>()
+  for (const note of notesForDoc) {
+    const el = findElementForNote(container, docPath, note)
+    if (!el) continue
+    const list = notesByElement.get(el) || []
+    list.push(note)
+    notesByElement.set(el, list)
   }
 
-  // 遍历所有候选元素
-  const elements = container.querySelectorAll('h2, h3, p') as NodeListOf<HTMLElement>
+  if (notesByElement.size === 0) return
+
+  // 步骤 2：为每个有归属 note 的元素渲染角标
+  const elements = Array.from(container.querySelectorAll('h1, h2, h3, p') as NodeListOf<HTMLElement>)
+  const renderedBadges: { badge: HTMLElement; element: HTMLElement; notes: ChangeNote[] }[] = []
+
   elements.forEach(el => {
-    const key = computeTargetKey(docPath, el)
-    const matches = notesByKey.get(key)
-    if (!matches || !matches.length) return
+    const matched = notesByElement.get(el)
+    if (!matched || !matched.length) return
 
     const badge = document.createElement('span')
-    badge.className = 'annotate-badge'
-    badge.textContent = String(matches.length)
-    badge.title = `${matches.length} 条记录：点击查看`
+    badge.className = 'annotate-badge annotate-badge-fixed'
+    badge.textContent = String(matched.length)
+    badge.title = `${matched.length} 条变更记录：点击查看`
+    pickBadgeColorClass(badge, matched)
 
-    // 角标颜色：按最常见 status 着色
-    const statuses = matches.map(m => m.status)
-    if (statuses.every(s => s === 'applied')) {
-      badge.classList.add('annotate-badge-applied')
-    } else if (statuses.some(s => s === 'pending')) {
-      badge.classList.add('annotate-badge-pending')
-    } else if (statuses.some(s => s === 'rejected')) {
-      badge.classList.add('annotate-badge-rejected')
-    } else {
-      badge.classList.add('annotate-badge-reviewed')
-    }
-
-    // 点角标 → 弹气泡
+    // 点击角标 → 打开气泡（再次点击关闭）
     badge.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
       e.preventDefault()
-      if (popoverEl && (popoverEl as any)._currentKey === key) {
+      const currentKey = (popoverEl as any)?._anchorElement
+      if (popoverEl && currentKey === el) {
         closeBadgePopover()
       } else {
-        ;(popoverEl as any) && closeBadgePopover()
-        openBadgePopover(badge, matches)
-        if (popoverEl) (popoverEl as any)._currentKey = key
+        if (popoverEl) closeBadgePopover()
+        openBadgePopover(badge, matched)
+        if (popoverEl) (popoverEl as any)._anchorElement = el
       }
     })
 
-    el.style.position = getComputedStyle(el).position || 'static'
-    if (el.style.position === 'static' || !el.style.position) {
-      el.style.position = 'relative'
-    }
-    el.appendChild(badge)
+    document.body.appendChild(badge)
+    renderedBadges.push({ badge, element: el, notes: matched })
   })
+
+  // 步骤 3：定位（贴在元素右侧 6px，不溢出视口）
+  const reposition = () => {
+    renderedBadges.forEach(({ badge, element }) => {
+      const rect = element.getBoundingClientRect()
+      if (rect.width === 0 && rect.height === 0) {
+        badge.style.display = 'none'
+        return
+      }
+      badge.style.display = ''
+      const badgeW = badge.offsetWidth || 22
+      const top = rect.top + 2
+      let left = rect.right + 6
+      if (left + badgeW > window.innerWidth - 4) {
+        left = window.innerWidth - badgeW - 4
+      }
+      if (left < 2) left = 2
+      badge.style.top = `${top}px`
+      badge.style.left = `${left}px`
+    })
+  }
+  reposition()
+
+  // 卸载旧监听，挂新监听
+  if (_badgeRepositionFn) {
+    window.removeEventListener('scroll', _badgeRepositionFn, true)
+    window.removeEventListener('resize', _badgeRepositionFn)
+  }
+  _badgeRepositionFn = reposition
+  window.addEventListener('scroll', reposition, true)
+  window.addEventListener('resize', reposition)
+
+  // MutationObserver：容器内容变化（如字号、布局）时也重定位
+  try {
+    const mo = new MutationObserver(() => reposition())
+    mo.observe(container, { childList: true, subtree: true, characterData: true, attributes: true })
+  } catch {
+    // 忽略（旧浏览器）
+  }
+}
+
+/** 从变更面板反向定位：滚动并高亮正文对应段落 */
+export function scrollToNoteInContent(noteId: string): void {
+  if (!badgeContainer || !badgeDocPath) return
+  const note = changes.find(c => c.id === noteId)
+  if (!note) return
+  const el = findElementForNote(badgeContainer, badgeDocPath, note)
+  if (!el) {
+    alert('该记录的目标段落未在当前文档中找到。')
+    return
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el.classList.add('change-item-highlight')
+  window.setTimeout(() => el.classList.remove('change-item-highlight'), 2400)
 }
 
 // 全局：点文档其他地方 → 关闭气泡
@@ -635,7 +749,12 @@ document.addEventListener('pointerdown', (ev) => {
 
 // --- Annotate panel ---
 function openAnnotatePanel(): void {
+  editingNoteId = null
   annotatePanel.classList.add('open')
+  const header = annotatePanel.querySelector('.annotate-panel-header h3') as HTMLElement
+  if (header) header.textContent = '添加标注'
+  const saveBtn = document.getElementById('annotate-save') as HTMLElement
+  if (saveBtn) saveBtn.textContent = '保存到变更记录'
   const docInput = document.getElementById('annotate-doc') as HTMLInputElement
   docInput.value = currentDocPath || ''
   if (currentSection) {
@@ -646,6 +765,7 @@ function openAnnotatePanel(): void {
 
 function closeAnnotatePanel(): void {
   annotatePanel.classList.remove('open')
+  editingNoteId = null
 }
 
 function saveAnnotate(): void {
@@ -654,6 +774,10 @@ function saveAnnotate(): void {
   const body = (document.getElementById('annotate-body') as HTMLTextAreaElement).value.trim()
   const tagsStr = (document.getElementById('annotate-tags') as HTMLInputElement).value.trim()
   const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : []
+  const priority = (document.getElementById('annotate-priority') as HTMLSelectElement).value as ChangePriority | ''
+  const reference = (document.getElementById('annotate-reference') as HTMLInputElement).value.trim()
+  const relatedStr = (document.getElementById('annotate-related') as HTMLInputElement).value.trim()
+  const relatedDocs = relatedStr ? relatedStr.split(',').map(p => p.trim()).filter(Boolean) : undefined
 
   if (!summary) {
     alert('请填写标题')
@@ -666,32 +790,58 @@ function saveAnnotate(): void {
   const elText = currentTargetEl
     ? (currentTargetEl.textContent || '').trim().slice(0, 60)
     : ''
+  const elIndex = currentTargetEl && badgeContainer
+    ? computeElementIndex(currentTargetEl)
+    : ''
+  const breadcrumb = currentTargetEl && badgeContainer
+    ? computeBreadcrumb(badgeContainer, currentTargetEl)
+    : ''
   const tKey = currentTargetKey
     || (currentDocPath && currentTargetEl && currentTargetEl
       ? computeTargetKey(currentDocPath, currentTargetEl)
       : '')
 
-  const change: ChangeNote = {
-    id: generateId(),
-    type,
-    author: 'user',
-    timestamp: new Date().toISOString(),
-    target: {
-      docPath: currentDocPath || '',
-      section: currentSection || undefined,
-      elementType: elType || undefined,
-      elementText: elText || undefined,
-    },
-    content: {
-      summary,
-      body,
-      tags,
-    },
-    status: 'pending',
-    targetKey: tKey,
+  if (editingNoteId) {
+    // 编辑模式：更新现有记录
+    const existing = changes.find(n => n.id === editingNoteId)
+    if (existing) {
+      existing.type = type
+      existing.content.summary = summary
+      existing.content.body = body
+      existing.content.tags = tags
+      existing.content.priority = (priority || undefined) as ChangePriority | undefined
+      existing.content.reference = reference || undefined
+      existing.content.relatedDocs = relatedDocs || undefined
+    }
+  } else {
+    // 新增模式
+    const change: ChangeNote = {
+      id: generateId(),
+      type,
+      author: 'user',
+      timestamp: new Date().toISOString(),
+      target: {
+        docPath: currentDocPath || '',
+        section: currentSection || undefined,
+        elementType: elType || undefined,
+        elementText: elText || undefined,
+        elementIndex: elIndex || undefined,
+        breadcrumb: breadcrumb || undefined,
+      },
+      content: {
+        summary,
+        body,
+        tags,
+        priority: (priority || undefined) as ChangePriority | undefined,
+        reference: reference || undefined,
+        relatedDocs: relatedDocs || undefined,
+      },
+      status: 'pending',
+      targetKey: tKey || '',
+    }
+    changes.unshift(change)
   }
 
-  changes.unshift(change)  // 新的在最上面
   persistAndRefresh()
   closeAnnotatePanel()
 
@@ -699,6 +849,25 @@ function saveAnnotate(): void {
   ;(document.getElementById('annotate-summary') as HTMLInputElement).value = ''
   ;(document.getElementById('annotate-body') as HTMLTextAreaElement).value = ''
   ;(document.getElementById('annotate-tags') as HTMLInputElement).value = ''
+  ;(document.getElementById('annotate-priority') as HTMLSelectElement).value = ''
+  ;(document.getElementById('annotate-reference') as HTMLInputElement).value = ''
+  ;(document.getElementById('annotate-related') as HTMLInputElement).value = ''
+}
+
+function openAnnotatePanelForEdit(note: ChangeNote): void {
+  editingNoteId = note.id
+  annotatePanel.classList.add('open')
+  const header = annotatePanel.querySelector('.annotate-panel-header h3') as HTMLElement
+  if (header) header.textContent = '编辑标注'
+  const saveBtn = document.getElementById('annotate-save') as HTMLElement
+  if (saveBtn) saveBtn.textContent = '更新标注'
+  ;(document.getElementById('annotate-doc') as HTMLInputElement).value = note.target.docPath || ''
+  ;(document.getElementById('annotate-summary') as HTMLInputElement).value = note.content.summary
+  ;(document.getElementById('annotate-body') as HTMLTextAreaElement).value = note.content.body
+  ;(document.getElementById('annotate-tags') as HTMLInputElement).value = (note.content.tags || []).join(', ')
+  ;(document.getElementById('annotate-priority') as HTMLSelectElement).value = note.content.priority || ''
+  ;(document.getElementById('annotate-reference') as HTMLInputElement).value = note.content.reference || ''
+  ;(document.getElementById('annotate-related') as HTMLInputElement).value = (note.content.relatedDocs || []).join(', ')
 }
 
 // --- Changes panel ---
@@ -724,6 +893,8 @@ function updateChangesList(): void {
       c.target?.docPath,
       c.target?.section,
       (c.content?.tags || []).join(' '),
+      c.content?.reference,
+      (c.content?.relatedDocs || []).join(' '),
       c.id,
     ].filter(Boolean).join(' ').toLowerCase()
     return haystack.includes(filterText)
@@ -742,22 +913,30 @@ function updateChangesList(): void {
     return
   }
 
-  changesList.innerHTML = visible.map((c, i) => `
+  changesList.innerHTML = visible.map((c) => `
     <div class="change-item" data-id="${c.id}">
       <div class="change-item-header">
         <span class="change-badge change-badge-${c.type}">${typeLabels[c.type] || c.type}</span>
         <span class="change-id">${c.id}</span>
         <div style="margin-left:auto; display:flex; gap:4px;">
+          <button class="change-action" data-act="expand" title="展开/缩合">&#9660;</button>
+          <button class="change-action" data-act="edit" title="编辑">&#9998;</button>
+          <button class="change-action" data-act="locate" title="定位到相关段落" style="font-weight:700;">&#8631;</button>
           <button class="change-action" data-act="download" title="下载该条">&#8595;</button>
           <button class="change-action" data-act="status" title="点击切换状态">${statusLabels[c.status] || c.status}</button>
           <button class="change-action" data-act="delete" title="删除">&times;</button>
         </div>
       </div>
       <div class="change-item-title">${esc(c.content.summary)}</div>
-      <div class="change-item-meta">${esc(c.target.docPath)}${c.target.section ? ' · ' + esc(c.target.section) : ''}</div>
-      ${c.content.body ? `<div class="change-item-body">${esc(c.content.body).replace(/\n/g, '<br/>')}</div>` : ''}
-      ${c.content.tags && c.content.tags.length ? `<div class="change-item-tags">${c.content.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
-      <div class="change-item-time">${formatTime(c.timestamp)} · ${esc(c.author)}</div>
+      <div class="change-item-meta">${esc(c.target.docPath)}${c.target.breadcrumb ? ' · ' + esc(c.target.breadcrumb) : ''}${c.target.elementIndex ? ' · ' + esc(c.target.elementIndex) : ''}</div>
+      ${c.content.priority ? `<span class="change-priority change-priority-${c.content.priority}">${priorityLabels[c.content.priority]}</span>` : ''}
+      <div class="change-item-collapsible">
+        ${c.content.body ? `<div class="change-item-body">${marked.parse(c.content.body)}</div>` : ''}
+        ${c.content.tags && c.content.tags.length ? `<div class="change-item-tags">${c.content.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+        ${c.content.reference ? `<div class="change-item-ref">参考：${esc(c.content.reference)}</div>` : ''}
+        ${c.content.relatedDocs && c.content.relatedDocs.length ? `<div class="change-item-related">关联：${c.content.relatedDocs.map(d => esc(d)).join(' · ')}</div>` : ''}
+        <div class="change-item-time">${formatTime(c.timestamp)} · ${esc(c.author)}</div>
+      </div>
     </div>
   `).join('')
 
@@ -766,6 +945,44 @@ function updateChangesList(): void {
     const id = (el as HTMLElement).dataset.id
     const note = changes.find(n => n.id === id)
     if (!note) return
+
+    // 定位：滚动到文档对应段落
+    el.querySelector('[data-act="locate"]')?.addEventListener('click', (ev) => {
+      ev.stopPropagation()
+      // 如果该记录属于当前打开的文档则直接定位；否则尝试切换到对应文档（若 main.ts 暴露了 API）
+      const needDoc = note.target?.docPath
+      if (needDoc && needDoc !== badgeDocPath) {
+        // 若内容区有同名 docPath，提示用户先切换（这里简单提示，真正的文档切换由 nav 处理）
+        // 我们通过事件机制通知外部模块：如果监听者存在就交给它处理。
+        const event = new CustomEvent('change-locate-doc', { detail: { docPath: needDoc, noteId: note.id } })
+        const handled = window.dispatchEvent(event)
+        if (!handled) {
+          alert(`该记录属于 ${needDoc}，请先在左侧导航打开该文档。`)
+        }
+        return
+      }
+      scrollToNoteInContent(note.id)
+      // 通知主模块展开左侧导航
+      window.dispatchEvent(new CustomEvent('change-expand-nav', { detail: { docPath: badgeDocPath } }))
+    })
+
+    // 展开/缩合
+    el.querySelector('[data-act="expand"]')?.addEventListener('click', (ev) => {
+      ev.stopPropagation()
+      el.classList.toggle('collapsed')
+      const btn = el.querySelector('[data-act="expand"]') as HTMLElement
+      if (el.classList.contains('collapsed')) {
+        btn.innerHTML = '&#9654;'
+      } else {
+        btn.innerHTML = '&#9660;'
+      }
+    })
+
+    // 编辑
+    el.querySelector('[data-act="edit"]')?.addEventListener('click', (ev) => {
+      ev.stopPropagation()
+      openAnnotatePanelForEdit(note)
+    })
 
     // 下载单条
     el.querySelector('[data-act="download"]')?.addEventListener('click', (ev) => {
@@ -809,4 +1026,42 @@ function esc(s: string): string {
   const d = document.createElement('div')
   d.textContent = s
   return d.innerHTML
+}
+
+// ============================================
+// Formatting toolbar (insert Markdown at cursor)
+// ============================================
+
+function insertAtCursor(ta: HTMLTextAreaElement, before: string, after = ''): void {
+  const start = ta.selectionStart
+  const end = ta.selectionEnd
+  const sel = ta.value.slice(start, end)
+  const insert = before + sel + after
+  ta.value = ta.value.slice(0, start) + insert + ta.value.slice(end)
+  const newPos = start + insert.length
+  ta.selectionStart = ta.selectionEnd = sel ? newPos : start + before.length
+  ta.focus()
+  ta.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function initFmtToolbar(): void {
+  const toolbar = document.querySelector('.annotate-format-toolbar')
+  if (!toolbar) return
+
+  toolbar.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('button')
+    if (!btn) return
+    const fmt = btn.dataset.fmt
+    const ta = document.getElementById('annotate-body') as HTMLTextAreaElement
+    if (!ta) return
+
+    switch (fmt) {
+      case 'bold':   insertAtCursor(ta, '**', '**'); break
+      case 'italic': insertAtCursor(ta, '*', '*'); break
+      case 'link':   insertAtCursor(ta, '[', '](url)'); break
+      case 'list':   insertAtCursor(ta, '- '); break
+      case 'quote':  insertAtCursor(ta, '> '); break
+      case 'code':   insertAtCursor(ta, '\n```\n', '\n```\n'); break
+    }
+  })
 }

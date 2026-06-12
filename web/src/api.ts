@@ -7,14 +7,21 @@ export type ChangeStatus = 'pending' | 'reviewed' | 'applied' | 'rejected'
 export interface ChangeTarget {
   docPath: string
   section?: string
-  elementType?: string      // 'h2' | 'h3' | 'p'
+  elementType?: string      // 'h1' | 'h2' | 'h3' | 'p'
   elementText?: string      // 该元素文本的前 60 字（用于稳定定位）
+  elementIndex?: string     // 同级同类元素中的序号，如 "h2#3"
+  breadcrumb?: string       // 层级路径，如 "01_地理 > 05_大陆A > 区域A1"
 }
+
+export type ChangePriority = 'low' | 'medium' | 'high' | 'critical'
 
 export interface ChangeContent {
   summary: string
   body: string
   tags: string[]
+  priority?: ChangePriority
+  reference?: string        // 引用来源（其他文档、外部链接等）
+  relatedDocs?: string[]    // 关联文档路径列表
 }
 
 export interface ChangeNote {
@@ -48,7 +55,7 @@ export function generateId(): string {
 }
 
 /**
- * 稳定的目标元素定位键：docPath | tag | 元素文本前 60 字
+ * 稳定的目标元素定位键：docPath | tag | 元素文本前 N 字
  * 同一段落在同一文档下，无论重新渲染多少次 key 都不变。
  */
 export function computeTargetKey(
@@ -67,6 +74,86 @@ export function ensureTargetKey(note: ChangeNote): ChangeNote {
   const text = note.target?.elementText || note.target?.section || ''
   note.targetKey = `${note.target?.docPath || ''}|${tag}|${text.slice(0, 60)}`
   return note
+}
+
+/**
+ * 判定一条 note 是否应当绑定到某个元素：
+ *   1) 精确匹配 targetKey（首选）
+ *   2) 同 docPath 且 tag 相同，且 note.elementText 是 element 文本的前缀/包含关系
+ *   3) 同 docPath 且 note.target.section 等于 element 文本（标题兜底）
+ *
+ * 返回匹配分数（0 表示不匹配），便于在多个候选里挑最佳。
+ */
+export function scoreMatch(note: ChangeNote, docPath: string, element: HTMLElement): number {
+  if (!note.target) return 0
+  if (note.target.docPath !== docPath) return 0
+
+  const tag = (element.tagName || '').toLowerCase()
+  const elementText = (element.textContent || '').trim()
+
+  // 1) 精确 key —— 最高置信度
+  if (note.targetKey && note.targetKey === computeTargetKey(docPath, element)) {
+    return 1000
+  }
+
+  // 2) tag + 文本包含（双向）
+  const noteText = (note.target.elementText || note.target.section || '').trim()
+  if (note.target.elementType && note.target.elementType === tag && noteText) {
+    if (elementText.startsWith(noteText) || noteText.startsWith(elementText)) return 100
+    if (elementText.includes(noteText) || noteText.includes(elementText.slice(0, 30))) return 60
+  }
+
+  // 3) section（标题）兜底：仅对 h2/h3 生效
+  if ((tag === 'h2' || tag === 'h3') && note.target.section) {
+    if (elementText === note.target.section) return 80
+  }
+
+  return 0
+}
+
+/** 在容器内为给定 note 找到最佳匹配元素（分数最高者） */
+export function findElementForNote(
+  container: HTMLElement,
+  docPath: string,
+  note: ChangeNote,
+): HTMLElement | null {
+  const candidates = container.querySelectorAll('h1, h2, h3, p') as NodeListOf<HTMLElement>
+  let best: HTMLElement | null = null
+  let bestScore = 0
+  candidates.forEach(el => {
+    const s = scoreMatch(note, docPath, el)
+    if (s > bestScore) {
+      bestScore = s
+      best = el
+    }
+  })
+  return best
+}
+
+/** 计算元素在同级同标签中的序号，如 "h2#3" */
+export function computeElementIndex(element: HTMLElement): string {
+  const tag = element.tagName.toLowerCase()
+  let index = 1
+  let sibling: Element | null = element.previousElementSibling
+  while (sibling) {
+    if (sibling.tagName.toLowerCase() === tag) index++
+    sibling = sibling.previousElementSibling
+  }
+  return `${tag}#${index}`
+}
+
+/**
+ * 从容器内头部元素获取层级面包屑路径。
+ * 收集目标元素之前的所有 h1/h2/h3 作为路径分段。
+ */
+export function computeBreadcrumb(container: HTMLElement, targetEl: HTMLElement): string {
+  const parts: string[] = []
+  const headings = container.querySelectorAll('h1, h2, h3')
+  for (const h of headings) {
+    if (h === targetEl) break
+    parts.push((h.textContent || '').trim())
+  }
+  return parts.join(' > ')
 }
 
 /** 单条下载（保留旧 API，用于用户明确要求下载单条） */

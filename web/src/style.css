@@ -59,12 +59,26 @@ body {
 }
 
 .sidebar-title {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 600;
   color: #ebe5f5;
   margin-bottom: 16px;
   line-height: 1.3;
   letter-spacing: 0.03em;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background 0.2s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.sidebar-title:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.02);
+}
+
+.sidebar-title:active {
+  transform: scale(0.98);
 }
 
 .search-input {
@@ -285,6 +299,38 @@ body {
   color: var(--text-secondary);
 }
 
+/* 主页（home.md）渲染容器：居中无标题栏 */
+.home-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: var(--text-secondary);
+  gap: 24px;
+  margin-top: -5vh;
+}
+
+.home-content h1 {
+  font-size: 48px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: 0.04em;
+}
+
+.home-content p {
+  font-size: 18px;
+  line-height: 2;
+  max-width: 600px;
+  margin: 0;
+}
+
+.home-content em {
+  font-style: normal;
+  color: var(--text-secondary);
+}
+
 .content-placeholder h2 {
   font-size: 28px;
   font-weight: 500;
@@ -309,7 +355,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 200px;
+  height: 100%;
   color: var(--text-secondary);
   font-size: 14px;
 }
@@ -951,10 +997,96 @@ body {
   color: #333;
 }
 
+/* Collapsible detail section inside change-item */
+.change-item-collapsible {
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  max-height: 2000px;
+  opacity: 1;
+}
+
+.change-item.collapsed .change-item-collapsible {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+
 .change-item-time {
   margin-top: 6px;
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+/* ============================================
+   Annotate Formatting Toolbar
+   ============================================ */
+.annotate-format-toolbar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.annotate-format-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-heading);
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.annotate-format-toolbar button:hover {
+  background: #eae8ed;
+  border-color: var(--accent);
+}
+
+.annotate-format-toolbar button:active {
+  background: #dddae3;
+}
+
+.annotate-format-toolbar button em {
+  font-style: italic;
+  font-family: serif;
+}
+
+.change-priority {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin: 4px 0;
+}
+
+.change-priority-low      { background: #e8e8e8; color: #555; }
+.change-priority-medium   { background: #fef3cd; color: #856404; }
+.change-priority-high     { background: #fde8d6; color: #b1560f; }
+.change-priority-critical { background: #fdd; color: #b91c1c; }
+
+.change-item-ref {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-left: 10px;
+  border-left: 2px solid #c8bfd4;
+}
+
+.change-item-related {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-left: 10px;
+  border-left: 2px solid #c8bfd4;
 }
 
 .change-action {
@@ -1045,44 +1177,41 @@ body {
 
 /* ============================================
    Badges (角标) — 显示段落中的记录数量
+   使用 position: fixed 放置在 body 下，
+   由 JS 根据 getBoundingClientRect 动态定位，避免被任何父容器 overflow 裁剪。
    ============================================ */
 .annotate-badge {
-  position: absolute;
-  top: 4px;
-  right: -6px;
-  min-width: 20px;
-  height: 20px;
+  position: fixed;
+  min-width: 22px;
+  height: 22px;
   padding: 0 6px;
-  border-radius: 10px;
-  background: #e2715a;            /* 默认 pending 色 (橙红) */
+  border-radius: 11px;
+  background: #e2715a;
   color: #fff;
   font-size: 11px;
-  font-weight: 600;
-  line-height: 20px;
+  font-weight: 700;
+  line-height: 22px;
   text-align: center;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   user-select: none;
   -webkit-user-select: none;
-  z-index: 5;
-  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 130;
+  pointer-events: auto;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  will-change: top, left;
 }
 
 .annotate-badge:hover {
-  transform: scale(1.15);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  transform: scale(1.2);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  z-index: 130;
 }
 
-.annotate-badge-pending  { background: #e2715a; }  /* 待处理 — 橙红 */
-.annotate-badge-reviewed { background: #8b7cc7; }  /* 已审阅 — 紫 */
-.annotate-badge-applied  { background: #4d9b6e; }  /* 已应用 — 绿 */
-.annotate-badge-rejected { background: #7a7a7a; }  /* 已忽略 — 灰 */
-
-/* 标题/段落内 badge 间距微调整 */
-h2 .annotate-badge, h3 .annotate-badge {
-  top: 2px;
-  right: 2px;
-}
+.annotate-badge-pending  { background: #e2715a; }
+.annotate-badge-reviewed { background: #8b7cc7; }
+.annotate-badge-applied  { background: #4d9b6e; }
+.annotate-badge-rejected { background: #7a7a7a; }
 
 /* ============================================
    Badge Popover (气泡) — 点击角标后的浮动面板
@@ -1202,4 +1331,13 @@ h2 .annotate-badge, h3 .annotate-badge {
   0%   { background: #fff8d6; box-shadow: 0 0 0 2px #d97706; border-radius: 4px; }
   30%  { background: #fff8d6; box-shadow: 0 0 0 2px #d97706; border-radius: 4px; }
   100% { background: transparent; box-shadow: 0 0 0 0 transparent; border-radius: 0; }
+}
+
+/* ============================================
+   Nav Item Highlight (当从变更记录定位时)
+   ============================================ */
+.nav-pulse {
+  background: rgba(45, 41, 69, 0.25);
+  box-shadow: inset 0 0 0 2px rgba(45, 41, 69, 0.6);
+  border-radius: 6px;
 }
