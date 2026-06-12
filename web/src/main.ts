@@ -302,7 +302,7 @@ async function loadDocument(path: string) {
 
     // Extract title from front matter or first heading
     let title = path.split('/').pop()?.replace('.md', '') || ''
-    const fmMatch = rawContent.match(/^---\s*\ntitle:\s*"([^"]*)"[\s\S]*?---/)
+    const fmMatch = rawContent.match(/^\uFEFF?---\s*\ntitle:\s*"([^"]*)"[\s\S]*?---/)
     if (fmMatch) {
       title = fmMatch[1]
     }
