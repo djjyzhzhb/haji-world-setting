@@ -1,0 +1,32 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.swp
+*.bak
+~$*
+
+# Node modules (web/)
+web/node_modules/
+
+# 构建产物
+web/dist/
+
+# 素材投递箱（未整理的原素材不提交，整理后归入正式目录的再提交）
+_inbox/图片/*
+_inbox/文本片段/*
+_inbox/链接/*
+_inbox/其他/*
+!_inbox/图片/.gitkeep
+!_inbox/文本片段/.gitkeep
+!_inbox/链接/.gitkeep
+!_inbox/其他/.gitkeep
+!_inbox/README.md
+
+# IDE
+.vscode/
+.idea/
+*.sublime-workspace
