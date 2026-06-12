@@ -89,7 +89,15 @@ body {
 }
 
 /* --- Nav Tree --- */
+
+/* Navigation layout & indentation tokens — all indents derive from these */
 .nav-tree {
+  --nav-indent-base: 20px;    /* depth-0 容器左侧边距 */
+  --nav-arrow-size: 12px;     /* 箭头占位尺寸（宽=高） */
+  --nav-arrow-gap: 6px;        /* 箭头与文本间距 */
+  --nav-depth-step: 16px;     /* 每加深一层的缩进增量 */
+  --nav-text-indent: calc(var(--nav-arrow-size) + var(--nav-arrow-gap));
+
   flex: 1;
   overflow-y: auto;
   padding: 8px 0;
@@ -108,8 +116,16 @@ body {
   margin-bottom: 2px;
 }
 
+/*
+  Section header — padding-left 由 depth 决定，
+  内部由箭头 + 文本，与同级 link 的文本起始位置与同深度的 leaf link 对齐：
+    header text-left = base + depth * step
+    link text-left   = base + depth * step + arrow + gap
+  ...不，header 内部有自己占据的文本起点 = base + depth * step + arrow + gap，与同深度 link 文本点，
+  所以 leaf link 的 padding-left 直接等于 base + depth*step + arrow + gap。
+*/
 .nav-section-header {
-  padding: 8px 20px;
+  padding: 8px var(--nav-indent-base) 8px calc(var(--nav-indent-base) + var(--nav-depth-step) * var(--depth, 0));
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
@@ -119,19 +135,32 @@ body {
   user-select: none;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--nav-arrow-gap);
   transition: color 0.2s, background 0.15s;
   border-left: 2px solid transparent;
 }
 
+/* 单一箭头元素：折叠时指向右 (0°)，展开时旋转 90° 指向下方 */
 .nav-arrow {
-  display: inline-block;
-  width: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nav-arrow-size);
+  height: var(--nav-arrow-size);
   font-size: 10px;
+  line-height: 1;
   color: rgba(255,255,255,0.3);
-  text-align: center;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+  transition: transform 0.2s ease, color 0.2s;
+}
+
+.nav-section:not(.collapsed) > .nav-section-header .nav-arrow {
+  transform: rotate(90deg);
+}
+
+.nav-section-header:hover .nav-arrow {
+  color: rgba(255,255,255,0.6);
 }
 
 .nav-section-header:hover {
@@ -161,11 +190,6 @@ body {
   background: var(--accent);
 }
 
-/* Arrow rotation: ▶ (collapsed) → ▼ (expanded) */
-.nav-section:not(.collapsed) .nav-arrow {
-  transform: rotate(90deg);
-}
-
 .nav-section.collapsed .nav-section-children {
   display: none;
 }
@@ -175,9 +199,11 @@ body {
   flex-direction: column;
 }
 
+/* Leaf link — padding-left = base + depth*step + arrow + gap，
+   确保其文本起点与同深度 section-header 文本起点完全对齐。 */
 .nav-link {
   display: block;
-  padding: 5px 20px 5px 32px;
+  padding: 6px var(--nav-indent-base) 6px calc(var(--nav-indent-base) + var(--nav-depth-step) * var(--depth, 0) + var(--nav-text-indent));
   font-size: 13px;
   color: var(--sidebar-text);
   text-decoration: none;
@@ -199,44 +225,38 @@ body {
   border-left-color: var(--accent);
 }
 
-/* Depth-based indentation */
-.nav-section-header[data-depth="1"] {
-  padding-left: 32px;
-  font-size: 11.5px;
+/*
+  depth ≥ 1 的 section header：字号稍小、非大写，更像子分组
+  用 CSS 变量 --depth 与 calc() 处理缩进，不再需要硬编码 padding-left
+*/
+.nav-section-header[data-depth="1"],
+.nav-section-header[data-depth="2"],
+.nav-section-header[data-depth="3"] {
+  font-size: 12px;
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0.02em;
   color: rgba(255,255,255,0.5);
 }
 
-.nav-section-header[data-depth="1"]:hover {
+.nav-section-header[data-depth="1"]:hover,
+.nav-section-header[data-depth="2"]:hover,
+.nav-section-header[data-depth="3"]:hover {
   color: rgba(255,255,255,0.8);
 }
 
-.nav-section-header[data-depth="1"].active {
+.nav-section-header[data-depth="1"].active,
+.nav-section-header[data-depth="2"].active,
+.nav-section-header[data-depth="3"].active {
   color: #ebe5f5;
 }
 
-.nav-section-header[data-depth="2"] {
-  padding-left: 44px;
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0.02em;
-  color: rgba(255,255,255,0.5);
-}
-
-.nav-section-header[data-depth="2"]:hover {
-  color: rgba(255,255,255,0.8);
-}
-
-.nav-link[data-depth="1"] {
-  padding-left: 44px;
-}
-
-.nav-link[data-depth="2"] {
-  padding-left: 56px;
-}
+/*
+  Leaf link 缩进统一由 --depth 决定，不再使用魔法数字。
+  下面为向后兼容保留 data-depth 属性：通过 CSS var() 直接处理
+  —— 如果浏览器支持 calc() + CSS var()，此处无需重复定义。
+  以下仅为保证旧代码过渡留底（如某处未设置 --depth 时的兜底值）。
+*/
 
 /* --- Content --- */
 .content {

@@ -252,8 +252,9 @@ function renderNavItems(
       const header = document.createElement('div')
       header.className = 'nav-section-header'
       header.dataset.depth = String(depth)
+      header.style.setProperty('--depth', String(depth))
 
-      // Arrow indicator — always ▶, rotated 90° by CSS when expanded
+      // 单一箭头元素，通过 CSS transform: rotate(90deg) 切换展开态
       const arrow = document.createElement('span')
       arrow.className = 'nav-arrow'
       arrow.textContent = '▶'
@@ -273,8 +274,6 @@ function renderNavItems(
       header.addEventListener('click', () => {
         const wasCollapsed = section.classList.contains('collapsed')
         section.classList.toggle('collapsed')
-        // Sync arrow rotation immediately
-        arrow.style.transform = section.classList.contains('collapsed') ? '' : 'rotate(90deg)'
         // Only load overview when EXPANDING (was collapsed → now open)
         if (item.overview && wasCollapsed) {
           loadDocument(item.overview)
@@ -306,6 +305,7 @@ function renderNavItems(
       const link = document.createElement('a')
       link.className = 'nav-link'
       link.dataset.depth = String(depth)
+      link.style.setProperty('--depth', String(depth))
       link.textContent = item.name
       link.href = '#'
       link.addEventListener('click', (e) => {
@@ -461,20 +461,6 @@ function updateActiveStates(path: string) {
         }
       }
   }
-  // Sync all arrow transforms after state changes
-  syncArrowTransforms()
-}
-
-/**
- * Update all .nav-arrow transforms to match their section's collapsed state.
- */
-function syncArrowTransforms() {
-  document.querySelectorAll('.nav-section').forEach(sec => {
-    const arr = sec.querySelector('.nav-arrow') as HTMLElement | null
-    if (arr) {
-      arr.style.transform = sec.classList.contains('collapsed') ? '' : 'rotate(90deg)'
-    }
-  })
 }
 
 /**
