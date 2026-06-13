@@ -529,19 +529,20 @@ body {
   .sidebar {
     position: fixed;
     top: 0;
-    left: -100%;
+    left: 0;
+    transform: translateX(-100%);
     width: fit-content;
     max-width: 85vw;
     height: 100vh;
     height: 100dvh;
     z-index: 250;
-    transition: left 0.3s ease;
+    transition: transform 0.3s ease;
     box-shadow: 4px 0 24px rgba(0,0,0,0.3);
     padding-top: env(safe-area-inset-top);
   }
 
   .sidebar.open {
-    left: 0;
+    transform: translateX(0);
   }
 
   /* 遮罩层 */

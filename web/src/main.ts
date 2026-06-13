@@ -243,7 +243,7 @@ function getSidebarWidth(): number {
 function setSidebarPos(px: number): void {
   sidebarEl.classList.remove('open')
   sidebarEl.style.transition = 'none'
-  sidebarEl.style.left = px + 'px'
+  sidebarEl.style.transform = `translateX(${px}px)`
   sidebarOverlay.style.transition = 'none'
   const ratio = Math.max(0, Math.min(1, (px + getSidebarWidth()) / getSidebarWidth()))
   sidebarOverlay.style.opacity = String(ratio * 0.4)
@@ -252,7 +252,7 @@ function setSidebarPos(px: number): void {
 
 function snapSidebar(open: boolean): void {
   sidebarEl.style.transition = ''
-  sidebarEl.style.left = ''
+  sidebarEl.style.transform = ''
   sidebarOverlay.style.transition = ''
   sidebarOverlay.style.opacity = ''
   if (open) {
@@ -283,13 +283,11 @@ let dragBaseLeft = 0
 let dragActive = false
 
 function handleDragStart(): void {
-  dragBaseLeft = parseFloat(sidebarEl.style.left)
-  if (isNaN(dragBaseLeft)) {
-    dragBaseLeft = sidebarEl.classList.contains('open') ? 0 : -getSidebarWidth()
-  }
+  const match = sidebarEl.style.transform.match(/translateX\(([-\d.]+)px\)/)
+  dragBaseLeft = match ? parseFloat(match[1]) : (sidebarEl.classList.contains('open') ? 0 : -getSidebarWidth())
   dragActive = true
   sidebarEl.classList.remove('open')
-  sidebarEl.style.left = dragBaseLeft + 'px'
+  sidebarEl.style.transform = `translateX(${dragBaseLeft}px)`
   sidebarEl.style.transition = 'none'
 }
 
@@ -305,14 +303,14 @@ function handleDragEnd(): void {
   if (!dragActive) return
   dragActive = false
   const sw = getSidebarWidth()
-  const currentLeft = parseFloat(sidebarEl.style.left)
-  const finalLeft = isNaN(currentLeft) ? dragBaseLeft : currentLeft
+  const match = sidebarEl.style.transform.match(/translateX\(([-\d.]+)px\)/)
+  const finalLeft = match ? parseFloat(match[1]) : dragBaseLeft
   const progress = (finalLeft + sw) / sw
   if (progress <= 0.15) {
     snapSidebar(false)
   } else {
     sidebarEl.style.transition = ''
-    sidebarEl.style.left = finalLeft + 'px'
+    sidebarEl.style.transform = `translateX(${finalLeft}px)`
     sidebarOverlay.style.transition = ''
     sidebarOverlay.style.opacity = String(progress * 0.4)
     sidebarOverlay.classList.toggle('visible', progress > 0)
@@ -834,3 +832,4 @@ helpBtn.addEventListener('click', () => {
     showWelcomeDialog()
   }
 })
+
