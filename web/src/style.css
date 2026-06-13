@@ -529,8 +529,8 @@ body {
   .sidebar {
     position: fixed;
     top: 0;
-    left: -75vw;
-    width: 75vw;
+    left: -56vw;
+    width: 56vw;
     height: 100vh;
     height: 100dvh;
     z-index: 250;
@@ -696,8 +696,8 @@ body {
   }
 
   .sidebar {
-    width: 85vw;
-    left: -85vw;
+    width: 64vw;
+    left: -64vw;
   }
 
   .sidebar.open {
