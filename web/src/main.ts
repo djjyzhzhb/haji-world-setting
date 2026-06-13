@@ -282,7 +282,7 @@ function closeSidebar(): void {
 let dragBaseLeft = 0
 let dragActive = false
 
-function handleDragStart(clientX: number): void {
+function handleDragStart(): void {
   dragBaseLeft = parseFloat(sidebarEl.style.left)
   if (isNaN(dragBaseLeft)) {
     dragBaseLeft = sidebarEl.classList.contains('open') ? 0 : -getSidebarWidth()
@@ -329,7 +329,7 @@ dragHandle.addEventListener('touchstart', (e) => {
   e.preventDefault()
   e.stopPropagation()
   touchStartX = e.touches[0].clientX
-  handleDragStart(touchStartX)
+  handleDragStart()
 }, { passive: false })
 
 dragHandle.addEventListener('touchmove', (e) => {
@@ -345,7 +345,7 @@ dragHandle.addEventListener('touchend', () => {
 // 鼠标事件（桌面调试）
 dragHandle.addEventListener('mousedown', (e) => {
   e.preventDefault()
-  handleDragStart(e.clientX)
+  handleDragStart()
   const mouseStartX = e.clientX
   const onMove = (ev: MouseEvent) => handleDragMove(ev.clientX, mouseStartX)
   const onUp = () => {
@@ -764,3 +764,73 @@ if (sidebarTitle) {
     loadDocument('home.md')
   })
 }
+
+// --- 欢迎弹窗（首次自动弹出，之后可通过右上角问号按钮切换）---
+function showWelcomeDialog(): void {
+  const existing = document.querySelector('.welcome-overlay')
+  if (existing) existing.remove()
+
+  const overlay = document.createElement('div')
+  overlay.className = 'welcome-overlay'
+
+  function dismiss(): void {
+    overlay.classList.add('fade-out')
+    setTimeout(() => overlay.remove(), 300)
+    localStorage.setItem('welcome-dismissed', '1')
+  }
+
+  overlay.innerHTML = `<div class="welcome-dialog">
+    <div class="welcome-header">ようこそ (◕‿◕✿)</div>
+    <div class="welcome-body">
+      <p>在这个世界观设定集中，你可以：</p>
+      <ul>
+        <li><b>浏览</b> — 左侧导航探索地理、历史、种族、力量体系等设定文档</li>
+        <li><b>标注</b> — 悬停任意段落，点击出现的「+」按钮，为段落添加你的笔记、批注和标记</li>
+        <li><b>搜索</b> — 顶部搜索框快速定位任何设定内容</li>
+        <li><b>追踪变更</b> — 点击右下角编辑图标，随时记录修改思路、设定演变和待办事项</li>
+        <li><b>移动端</b> — 左上角菜单按钮打开导航，拖拽侧边栏右侧把手自由调整宽度</li>
+      </ul>
+      <div class="welcome-section">
+        <p><b>关于「导出 JSON」</b></p>
+        <ul>
+          <li><b>本地保存</b> — 将所有标注和变更记录导出为 JSON，作为你创作数据的备份</li>
+          <li><b>为创作者提供内容</b> — 导出的 JSON 可交给维护者，帮助了解读者反馈、改进设定</li>
+        </ul>
+      </div>
+      <p class="welcome-disclaimer">（这个网页以及这条弹窗几乎全是 AI 做的，请多包涵他时不时抽风 (￣▽￣*)ゞ）</p>
+      <p>希望这里成为你创作旅程的可靠伙伴 (´･ω･\`)ﾉ</p>
+    </div>
+    <div class="welcome-footer">
+      <button class="welcome-btn" id="welcome-dismiss">好的，开始探索</button>
+    </div>
+  </div>`
+  document.body.appendChild(overlay)
+
+  // 点遮罩关闭
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) dismiss()
+  })
+  // 点按钮关闭
+  document.getElementById('welcome-dismiss')!.addEventListener('click', dismiss)
+}
+
+// 首次访问自动弹出
+if (!localStorage.getItem('welcome-dismissed')) {
+  showWelcomeDialog()
+}
+
+// 右上角帮助按钮：切换弹窗
+const helpBtn = document.createElement('button')
+helpBtn.className = 'help-btn'
+helpBtn.innerHTML = '?'
+helpBtn.title = '功能说明'
+document.body.appendChild(helpBtn)
+helpBtn.addEventListener('click', () => {
+  const existing = document.querySelector('.welcome-overlay')
+  if (existing) {
+    existing.classList.add('fade-out')
+    setTimeout(() => existing.remove(), 300)
+  } else {
+    showWelcomeDialog()
+  }
+})

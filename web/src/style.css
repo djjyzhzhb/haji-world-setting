@@ -912,6 +912,186 @@ body {
     top: -0.2rem;
     right: -0.2rem;
   }
+
+  .welcome-overlay {
+    padding: 3vw;
+  }
+
+  .welcome-dialog {
+    max-width: 100%;
+    border-radius: 8px;
+    max-height: 90vh;
+  }
+
+  .welcome-header {
+    font-size: 18px;
+    padding: 18px 20px 14px;
+  }
+
+  .welcome-body {
+    font-size: 13px;
+    padding: 12px 20px 16px;
+  }
+
+  .welcome-footer {
+    padding: 12px 20px 20px;
+  }
+
+  .welcome-btn {
+    font-size: 14px;
+    padding: 10px;
+  }
+}
+
+/* ============================================
+   Welcome Dialog — 首次访问功能说明
+   ============================================ */
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5vw;
+  animation: welcomeFadeIn 0.3s ease;
+}
+
+.welcome-overlay.fade-out {
+  animation: welcomeFadeOut 0.3s ease forwards;
+}
+
+@keyframes welcomeFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes welcomeFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.welcome-dialog {
+  background: var(--sidebar-bg);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+.welcome-header {
+  font-size: 22px;
+  font-weight: 600;
+  color: #ebe5f5;
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.welcome-body {
+  padding: 16px 28px 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.welcome-body p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+
+.welcome-body ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.welcome-body li {
+  padding: 8px 0;
+  padding-left: 24px;
+  position: relative;
+  color: var(--text-secondary);
+}
+
+.welcome-body li::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  color: rgba(255,255,255,0.3);
+  font-size: 12px;
+  top: 9px;
+}
+
+.welcome-body b {
+  color: #ebe5f5;
+  font-weight: 600;
+}
+
+.welcome-disclaimer {
+  font-size: 12px !important;
+  color: rgba(255,255,255,0.3) !important;
+  font-style: italic;
+  margin-top: 14px !important;
+  text-align: center;
+}
+
+.welcome-section {
+  margin: 12px 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.welcome-footer {
+  padding: 16px 28px 24px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.welcome-btn {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: #ebe5f5;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.welcome-btn:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.25);
+}
+
+/* 右上角帮助按钮 */
+.help-btn {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--sidebar-bg);
+  border: none;
+  color: #ebe5f5;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.help-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 
 /* ============================================
