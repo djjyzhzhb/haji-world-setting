@@ -518,7 +518,7 @@ body {
 /* --- Responsive --- */
 @media (max-width: 768px) {
   html {
-    font-size: 11px;          /* 小范式基准 */
+    font-size: 9px;           /* 小范式基准 */
   }
 
   .layout {
@@ -528,8 +528,8 @@ body {
   .sidebar {
     position: fixed;
     top: 0;
-    left: -40vw;
-    width: 40vw;
+    left: -33vw;
+    width: 33vw;
     height: 100vh;
     height: 100dvh;
     z-index: 250;
@@ -577,15 +577,15 @@ body {
     position: fixed;
     top: 1vh;
     left: 2vw;
-    width: 2.2rem;
-    height: 2.2rem;
+    width: 2rem;
+    height: 2rem;
     align-items: center;
     justify-content: center;
     background: var(--sidebar-bg);
     color: #ebe5f5;
     border: none;
-    border-radius: 0.4rem;
-    font-size: 1.2rem;
+    border-radius: 0.35rem;
+    font-size: 1.1rem;
     cursor: pointer;
     z-index: 230;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -595,11 +595,19 @@ body {
   .hamburger-btn.hamburger-close {
     z-index: 260;
     background: rgba(30, 27, 46, 0.9);
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
 
   .content {
-    padding: 4vh 2vw 4vh;
+    padding: 3vh 1.5vw 3vh;
+  }
+
+  /* 导航树缩进变量：覆盖桌面 px 值为 rem，随字号缩放 */
+  .nav-tree {
+    --nav-indent-base: 0.7rem;
+    --nav-arrow-size: 0.6rem;
+    --nav-arrow-gap: 0.3rem;
+    --nav-depth-step: 0.6rem;
   }
 
   .content-body h1 {
@@ -687,48 +695,71 @@ body {
     padding: 0.35rem 0.8rem 0.35rem calc(var(--nav-indent-base) + var(--nav-depth-step) * var(--depth, 0));
     font-size: 0.75rem;
   }
+
+  /* 帮助按钮缩小 */
+  .help-btn {
+    top: 1vh;
+    right: 2vw;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1rem;
+  }
 }
 
 @media (max-width: 600px) {
   html {
-    font-size: 10px;
+    font-size: 8px;
   }
 
   .sidebar {
-    width: 45vw;
-    left: -45vw;
+    width: 36vw;
+    left: -36vw;
   }
 
   .sidebar.open {
     left: 0;
   }
 
+  /* 导航树缩进变量 */
+  .nav-tree {
+    --nav-indent-base: 0.6rem;
+    --nav-arrow-size: 0.55rem;
+    --nav-arrow-gap: 0.25rem;
+    --nav-depth-step: 0.55rem;
+  }
+
   .home-content h1 {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
 
   .home-content p {
-    font-size: 1rem;
-    line-height: 1.6;
+    font-size: 0.9rem;
+    line-height: 1.5;
     max-width: 100%;
     padding: 0 3vw;
   }
 
   .home-content {
     margin-top: -2vh;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
 
   .hamburger-btn {
     top: 0.8vh;
     left: 2vw;
-    width: 2rem;
-    height: 2rem;
-    font-size: 1.1rem;
+    width: 1.8rem;
+    height: 1.8rem;
+    font-size: 1rem;
     border-radius: 0.3rem;
   }
 
   .hamburger-btn.hamburger-close {
+    font-size: 0.85rem;
+  }
+
+  .help-btn {
+    width: 1.8rem;
+    height: 1.8rem;
     font-size: 0.9rem;
   }
 
