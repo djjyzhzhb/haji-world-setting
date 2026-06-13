@@ -236,23 +236,8 @@ const dragHandle = document.createElement('div')
 dragHandle.className = 'sidebar-drag-handle'
 sidebarEl.appendChild(dragHandle)
 
-// 滑动状态
-let dragStartX = 0
-let dragStartY = 0
-let isDragging = false
-let dragPending = false
-let sidebarBaseLeft = 0   // 拖动起始时侧边栏的 left 值
-
-const DRAG_THRESHOLD = 8   // 超过此像素才视为拖动
-
 function getSidebarWidth(): number {
   return sidebarEl.getBoundingClientRect().width
-}
-
-function getSidebarLeft(): number {
-  const inline = parseFloat(sidebarEl.style.left)
-  if (!isNaN(inline)) return inline
-  return sidebarEl.classList.contains('open') ? 0 : -getSidebarWidth()
 }
 
 function setSidebarPos(px: number): void {
@@ -293,61 +278,39 @@ function closeSidebar(): void {
   snapSidebar(false)
 }
 
-function isSidebarVisible(): boolean {
-  return getSidebarLeft() > -getSidebarWidth()
-}
+// --- 把手拖动逻辑 ---
+let dragBaseLeft = 0
+let dragActive = false
 
-function activateDrag(): void {
-  isDragging = true
-  dragPending = false
+function handleDragStart(clientX: number): void {
+  dragBaseLeft = parseFloat(sidebarEl.style.left)
+  if (isNaN(dragBaseLeft)) {
+    dragBaseLeft = sidebarEl.classList.contains('open') ? 0 : -getSidebarWidth()
+  }
+  dragActive = true
   sidebarEl.classList.remove('open')
-  sidebarEl.style.left = sidebarBaseLeft + 'px'
+  sidebarEl.style.left = dragBaseLeft + 'px'
   sidebarEl.style.transition = 'none'
 }
 
-// 触摸滑动
-document.addEventListener('touchstart', (e) => {
-  if (window.innerWidth > 768) return
-  const touch = e.touches[0]
-  dragStartX = touch.clientX
-  dragStartY = touch.clientY
-  sidebarBaseLeft = getSidebarLeft()
-  // 左边缘或在侧边栏上时，标记为潜在拖动
-  if (dragStartX <= 30 || sidebarBaseLeft > -getSidebarWidth()) {
-    dragPending = true
-  }
-}, { passive: true })
-
-document.addEventListener('touchmove', (e) => {
-  if (!dragPending) return
-  const touch = e.touches[0]
-  const dx = Math.abs(touch.clientX - dragStartX)
-  const dy = Math.abs(touch.clientY - dragStartY)
-  // 横向移动超过阈值且不是纵向滚动，才激活拖动
-  if (dx > DRAG_THRESHOLD && dx > dy) {
-    activateDrag()
-  }
-  if (!isDragging) return
-  e.preventDefault()
-  const delta = touch.clientX - dragStartX
+function handleDragMove(clientX: number, startX: number): void {
+  if (!dragActive) return
+  const delta = clientX - startX
   const sw = getSidebarWidth()
-  const newLeft = Math.min(0, Math.max(-sw, sidebarBaseLeft + delta))
+  const newLeft = Math.min(0, Math.max(-sw, dragBaseLeft + delta))
   setSidebarPos(newLeft)
-}, { passive: false })
+}
 
-document.addEventListener('touchend', () => {
-  dragPending = false
-  if (!isDragging) return
-  isDragging = false
+function handleDragEnd(): void {
+  if (!dragActive) return
+  dragActive = false
   const sw = getSidebarWidth()
   const currentLeft = parseFloat(sidebarEl.style.left)
-  const finalLeft = isNaN(currentLeft) ? sidebarBaseLeft : currentLeft
+  const finalLeft = isNaN(currentLeft) ? dragBaseLeft : currentLeft
   const progress = (finalLeft + sw) / sw
   if (progress <= 0.15) {
-    // 太靠近边缘，自动收回
     snapSidebar(false)
   } else {
-    // 保持在用户松手的位置
     sidebarEl.style.transition = ''
     sidebarEl.style.left = finalLeft + 'px'
     sidebarOverlay.style.transition = ''
@@ -357,10 +320,45 @@ document.addEventListener('touchend', () => {
     hamburgerBtn.title = '关闭菜单'
     hamburgerBtn.classList.add('hamburger-close')
   }
+}
+
+// 触摸事件（把手）
+let touchStartX = 0
+
+dragHandle.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+  touchStartX = e.touches[0].clientX
+  handleDragStart(touchStartX)
+}, { passive: false })
+
+dragHandle.addEventListener('touchmove', (e) => {
+  if (!dragActive) return
+  e.preventDefault()
+  handleDragMove(e.touches[0].clientX, touchStartX)
+}, { passive: false })
+
+dragHandle.addEventListener('touchend', () => {
+  handleDragEnd()
+})
+
+// 鼠标事件（桌面调试）
+dragHandle.addEventListener('mousedown', (e) => {
+  e.preventDefault()
+  handleDragStart(e.clientX)
+  const mouseStartX = e.clientX
+  const onMove = (ev: MouseEvent) => handleDragMove(ev.clientX, mouseStartX)
+  const onUp = () => {
+    handleDragEnd()
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
 })
 
 hamburgerBtn.addEventListener('click', () => {
-  if (isSidebarVisible()) {
+  if (sidebarEl.classList.contains('open')) {
     closeSidebar()
   } else {
     openSidebar()
