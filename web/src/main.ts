@@ -224,11 +224,6 @@ hamburgerBtn.innerHTML = '☰'
 hamburgerBtn.title = '菜单'
 document.body.appendChild(hamburgerBtn)
 
-// 遮罩层
-const sidebarOverlay = document.createElement('div')
-sidebarOverlay.className = 'sidebar-overlay'
-document.body.appendChild(sidebarOverlay)
-
 const sidebarEl = document.getElementById('sidebar')!
 
 // 拖动把手
@@ -244,26 +239,18 @@ function setSidebarPos(px: number): void {
   sidebarEl.classList.remove('open')
   sidebarEl.style.transition = 'none'
   sidebarEl.style.transform = `translateX(${px}px)`
-  sidebarOverlay.style.transition = 'none'
-  const ratio = Math.max(0, Math.min(1, (px + getSidebarWidth()) / getSidebarWidth()))
-  sidebarOverlay.style.opacity = String(ratio * 0.4)
-  sidebarOverlay.classList.toggle('visible', ratio > 0)
 }
 
 function snapSidebar(open: boolean): void {
   sidebarEl.style.transition = ''
   sidebarEl.style.transform = ''
-  sidebarOverlay.style.transition = ''
-  sidebarOverlay.style.opacity = ''
   if (open) {
     sidebarEl.classList.add('open')
-    sidebarOverlay.classList.add('visible')
     hamburgerBtn.innerHTML = '✕'
     hamburgerBtn.title = '关闭菜单'
     hamburgerBtn.classList.add('hamburger-close')
   } else {
     sidebarEl.classList.remove('open')
-    sidebarOverlay.classList.remove('visible')
     hamburgerBtn.innerHTML = '☰'
     hamburgerBtn.title = '菜单'
     hamburgerBtn.classList.remove('hamburger-close')
@@ -311,9 +298,6 @@ function handleDragEnd(): void {
   } else {
     sidebarEl.style.transition = ''
     sidebarEl.style.transform = `translateX(${finalLeft}px)`
-    sidebarOverlay.style.transition = ''
-    sidebarOverlay.style.opacity = String(progress * 0.4)
-    sidebarOverlay.classList.toggle('visible', progress > 0)
     hamburgerBtn.innerHTML = '✕'
     hamburgerBtn.title = '关闭菜单'
     hamburgerBtn.classList.add('hamburger-close')
@@ -362,7 +346,6 @@ hamburgerBtn.addEventListener('click', () => {
     openSidebar()
   }
 })
-sidebarOverlay.addEventListener('click', closeSidebar)
 
 // --- Render sidebar navigation ---
 const navTree = document.getElementById('nav-tree')!
@@ -774,7 +757,6 @@ function showWelcomeDialog(): void {
   function dismiss(): void {
     overlay.classList.add('fade-out')
     setTimeout(() => overlay.remove(), 300)
-    localStorage.setItem('welcome-dismissed', '1')
   }
 
   overlay.innerHTML = `<div class="welcome-dialog">
@@ -797,6 +779,10 @@ function showWelcomeDialog(): void {
       </div>
       <p class="welcome-disclaimer">（这个网页以及这条弹窗几乎全是 AI 做的，请多包涵他时不时抽风 (￣▽￣*)ゞ）</p>
       <p>希望这里成为你创作旅程的可靠伙伴 (´･ω･\`)ﾉ</p>
+      <label class="welcome-never-again">
+        <input type="checkbox" id="welcome-never-again" ${localStorage.getItem('welcome-dismissed') ? 'checked' : ''} />
+        以后不再自动弹出
+      </label>
     </div>
     <div class="welcome-footer">
       <button class="welcome-btn" id="welcome-dismiss">好的，开始探索</button>
@@ -809,10 +795,18 @@ function showWelcomeDialog(): void {
     if (e.target === overlay) dismiss()
   })
   // 点按钮关闭
-  document.getElementById('welcome-dismiss')!.addEventListener('click', dismiss)
+  document.getElementById('welcome-dismiss')!.addEventListener('click', () => {
+    const neverAgain = (document.getElementById('welcome-never-again') as HTMLInputElement)?.checked
+    if (neverAgain) {
+      localStorage.setItem('welcome-dismissed', '1')
+    } else {
+      localStorage.removeItem('welcome-dismissed')
+    }
+    dismiss()
+  })
 }
 
-// 首次访问自动弹出
+// 每次刷新都自动弹出（除非用户勾选了「不再显示」）
 if (!localStorage.getItem('welcome-dismissed')) {
   showWelcomeDialog()
 }

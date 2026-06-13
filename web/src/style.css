@@ -33,7 +33,7 @@ body {
   margin: 0;
   overflow: hidden;
   height: 100vh;
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
 }
 
 /* --- Layout --- */
@@ -539,24 +539,11 @@ body {
     transition: transform 0.3s ease;
     box-shadow: 4px 0 24px rgba(0,0,0,0.3);
     padding-top: env(safe-area-inset-top);
+    overscroll-behavior: contain;
   }
 
   .sidebar.open {
     transform: translateX(0);
-  }
-
-  /* 遮罩层 */
-  .sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 240;
-    pointer-events: none;
-  }
-
-  .sidebar-overlay.visible {
-    display: block;
   }
 
   /* 拖动把手 */
@@ -1206,6 +1193,26 @@ body {
 .welcome-btn:hover {
   background: rgba(255,255,255,0.18);
   border-color: rgba(255,255,255,0.25);
+}
+
+/* 欢迎弹窗「不再自动弹出」复选框 */
+.welcome-never-again {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  user-select: none;
+}
+
+.welcome-never-again input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 /* 右上角帮助按钮 */
