@@ -217,6 +217,111 @@ app.innerHTML = `
   </div>
 `
 
+// --- 手机端汉堡按钮 + 滑动抽屉 ---
+const hamburgerBtn = document.createElement('button')
+hamburgerBtn.className = 'hamburger-btn'
+hamburgerBtn.innerHTML = '☰'
+hamburgerBtn.title = '菜单'
+document.body.appendChild(hamburgerBtn)
+
+// 遮罩层
+const sidebarOverlay = document.createElement('div')
+sidebarOverlay.className = 'sidebar-overlay'
+document.body.appendChild(sidebarOverlay)
+
+const sidebarEl = document.getElementById('sidebar')!
+
+// 滑动状态
+let dragStartX = 0
+let dragCurrentX = 0
+let isDragging = false
+let sidebarOpenAtDragStart = false
+
+function getSidebarWidth(): number {
+  return sidebarEl.getBoundingClientRect().width
+}
+
+function setSidebarPos(px: number): void {
+  sidebarEl.style.transition = 'none'
+  sidebarEl.style.left = px + 'px'
+  sidebarOverlay.style.transition = 'none'
+  const ratio = Math.max(0, Math.min(1, (px + getSidebarWidth()) / getSidebarWidth()))
+  sidebarOverlay.style.opacity = String(ratio * 0.4)
+  sidebarOverlay.classList.toggle('visible', ratio > 0)
+}
+
+function snapSidebar(open: boolean): void {
+  sidebarEl.style.transition = ''
+  sidebarEl.style.left = ''
+  sidebarOverlay.style.transition = ''
+  sidebarOverlay.style.opacity = ''
+  if (open) {
+    sidebarEl.classList.add('open')
+    sidebarOverlay.classList.add('visible')
+    hamburgerBtn.innerHTML = '✕'
+    hamburgerBtn.title = '关闭菜单'
+    hamburgerBtn.classList.add('hamburger-close')
+  } else {
+    sidebarEl.classList.remove('open')
+    sidebarOverlay.classList.remove('visible')
+    hamburgerBtn.innerHTML = '☰'
+    hamburgerBtn.title = '菜单'
+    hamburgerBtn.classList.remove('hamburger-close')
+  }
+}
+
+function openSidebar(): void {
+  snapSidebar(true)
+}
+
+function closeSidebar(): void {
+  snapSidebar(false)
+}
+
+// 触摸滑动
+document.addEventListener('touchstart', (e) => {
+  if (window.innerWidth > 768) return
+  const touch = e.touches[0]
+  dragStartX = touch.clientX
+  dragCurrentX = touch.clientX
+  sidebarOpenAtDragStart = sidebarEl.classList.contains('open')
+  // 左边缘或侧边栏本身触发
+  if (dragStartX <= 30 || sidebarOpenAtDragStart) {
+    isDragging = true
+    sidebarEl.style.left = sidebarOpenAtDragStart ? '0px' : (-getSidebarWidth() + 'px')
+    sidebarEl.style.transition = 'none'
+  }
+}, { passive: false })
+
+document.addEventListener('touchmove', (e) => {
+  if (!isDragging) return
+  const touch = e.touches[0]
+  dragCurrentX = touch.clientX
+  const delta = dragCurrentX - dragStartX
+  const sw = getSidebarWidth()
+  const baseLeft = sidebarOpenAtDragStart ? 0 : -sw
+  const newLeft = Math.min(0, Math.max(-sw, baseLeft + delta))
+  setSidebarPos(newLeft)
+}, { passive: false })
+
+document.addEventListener('touchend', () => {
+  if (!isDragging) return
+  isDragging = false
+  const sw = getSidebarWidth()
+  const currentLeft = parseFloat(sidebarEl.style.left) || (sidebarOpenAtDragStart ? 0 : -sw)
+  const progress = (currentLeft + sw) / sw // 0=关闭, 1=打开
+  snapSidebar(progress > 0.4)
+})
+
+hamburgerBtn.addEventListener('click', () => {
+  if (sidebarEl.classList.contains('open')) {
+    closeSidebar()
+  } else {
+    openSidebar()
+  }
+})
+sidebarOverlay.addEventListener('click', closeSidebar)
+
 // --- Render sidebar navigation ---
 const navTree = document.getElementById('nav-tree')!
 const searchInput = document.getElementById('search-input') as HTMLInputElement
@@ -247,12 +352,21 @@ function renderNavItems(
       header.dataset.depth = String(depth)
       header.style.setProperty('--depth', String(depth))
 
-      // 单一箭头元素，通过 CSS transform: rotate(90deg) 切换展开态
-      const arrow = document.createElement('span')
-      arrow.className = 'nav-arrow'
-      arrow.textContent = '▶'
-      header.appendChild(arrow)
-      header.appendChild(document.createTextNode(item.name))
+      // 独立箭头按钮：仅控制展开/缩合
+      const arrowBtn = document.createElement('button')
+      arrowBtn.className = 'nav-arrow-btn'
+      arrowBtn.innerHTML = '▶'
+      arrowBtn.title = '展开/缩合'
+      arrowBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        section.classList.toggle('collapsed')
+      })
+      header.appendChild(arrowBtn)
+
+      const headerText = document.createElement('span')
+      headerText.className = 'nav-section-text'
+      headerText.textContent = item.name
+      header.appendChild(headerText)
       header.dataset.name = item.name
 
       // Highlight header if its overview doc is currently loaded
@@ -265,17 +379,15 @@ function renderNavItems(
         header.classList.add('has-overview')
       }
 
-      header.addEventListener('click', () => {
-        const wasCollapsed = section.classList.contains('collapsed')
-        section.classList.toggle('collapsed')
-        // Only load overview when EXPANDING AND 确实有这个 overview 文件（先检查 import.meta.glob）
-        if (item.overview && wasCollapsed) {
-          // 先检查是否能找到这个文件，找不到就不 load，避免内容变成 error 页
-          const overviewPath = item.overview
-          const matchedPath = Object.keys(allMdImports).find(k => k.includes(overviewPath))
-          if (matchedPath) {
-            loadDocument(overviewPath)
-          }
+      // 点击 header 文本区域：加载 overview 文档（不控制展开/缩合）
+      header.addEventListener('click', (e) => {
+        // 如果点的是箭头按钮，不处理
+        if ((e.target as HTMLElement).closest('.nav-arrow-btn')) return
+        if (!item.overview) return
+        const overviewPath = item.overview
+        const matchedPath = Object.keys(allMdImports).find(k => k.includes(overviewPath))
+        if (matchedPath) {
+          loadDocument(overviewPath)
         }
       })
 
@@ -563,6 +675,14 @@ function expandAndHighlightNav(path: string) {
 // --- Search ---
 searchInput.addEventListener('input', () => {
   renderNavTree(directoryTree, navTree, searchInput.value.trim())
+})
+
+// 手机端：点击导航项后关闭侧边栏
+navTree.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement
+  if (target.closest('.nav-link') || target.closest('.nav-section-header')) {
+    closeSidebar()
+  }
 })
 
 // --- 跨文档定位：当变更面板「定位」按钮按下且目标文档不在当前显示时，自动切换文档

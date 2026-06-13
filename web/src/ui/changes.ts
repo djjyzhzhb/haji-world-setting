@@ -540,10 +540,17 @@ function openBadgePopover(badge: HTMLElement, notes: ChangeNote[]): void {
   const viewportW = window.innerWidth
   const viewportH = window.innerHeight
 
-  // 水平：优先右边
-  let left = badgeRect.right + margin
-  if (left + popRect.width > viewportW - 8) {
-    left = Math.max(8, badgeRect.left - popRect.width - margin)
+  // 手机端（≤600px）：优先显示在下方中央，避免左右空间不足
+  const isMobile = viewportW <= 600
+  let left: number
+  if (isMobile) {
+    left = Math.max(8, (viewportW - popRect.width) / 2)
+  } else {
+    // 水平：优先右边
+    left = badgeRect.right + margin
+    if (left + popRect.width > viewportW - 8) {
+      left = Math.max(8, badgeRect.left - popRect.width - margin)
+    }
   }
   // 垂直：优先下方
   let top = badgeRect.top + badgeRect.height + margin
