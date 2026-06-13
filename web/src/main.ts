@@ -233,10 +233,9 @@ const sidebarEl = document.getElementById('sidebar')!
 
 // 滑动状态
 let dragStartX = 0
-let touchStartY = 0
+let dragCurrentX = 0
 let isDragging = false
-let potentialDrag = false
-let sidebarBaseLeft = 0
+let sidebarBaseLeft = 0   // 拖动起始时侧边栏的 left 值
 
 function getSidebarWidth(): number {
   return sidebarEl.getBoundingClientRect().width
@@ -290,17 +289,17 @@ function isSidebarVisible(): boolean {
   return getSidebarLeft() > -getSidebarWidth()
 }
 
-// 触摸滑动 — 先记录起始点，等 touchmove 判断方向后再决定是否拦截
+// 触摸滑动
 document.addEventListener('touchstart', (e) => {
   if (window.innerWidth > 768) return
   const touch = e.touches[0]
   dragStartX = touch.clientX
-  touchStartY = touch.clientY
-  isDragging = false
-  potentialDrag = false
+  dragCurrentX = touch.clientX
   sidebarBaseLeft = getSidebarLeft()
+  // 左边缘或在侧边栏上时触发
   if (dragStartX <= 30 || sidebarBaseLeft > -getSidebarWidth()) {
-    potentialDrag = true
+    isDragging = true
+    e.preventDefault()
     sidebarEl.classList.remove('open')
     sidebarEl.style.left = sidebarBaseLeft + 'px'
     sidebarEl.style.transition = 'none'
@@ -308,26 +307,17 @@ document.addEventListener('touchstart', (e) => {
 }, { passive: false })
 
 document.addEventListener('touchmove', (e) => {
-  if (!potentialDrag) return
-  const touch = e.touches[0]
-  const dx = touch.clientX - dragStartX
-  const dy = touch.clientY - touchStartY
-
-  if (!isDragging) {
-    // 判断方向：移动太小时待定，垂直>水平则放弃为正常滚动
-    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
-    if (Math.abs(dx) < Math.abs(dy)) { potentialDrag = false; return }
-    isDragging = true
-  }
-
+  if (!isDragging) return
   e.preventDefault()
+  const touch = e.touches[0]
+  dragCurrentX = touch.clientX
+  const delta = dragCurrentX - dragStartX
   const sw = getSidebarWidth()
-  const newLeft = Math.min(0, Math.max(-sw, sidebarBaseLeft + dx))
+  const newLeft = Math.min(0, Math.max(-sw, sidebarBaseLeft + delta))
   setSidebarPos(newLeft)
 }, { passive: false })
 
 document.addEventListener('touchend', () => {
-  potentialDrag = false
   if (!isDragging) return
   isDragging = false
   const sw = getSidebarWidth()
@@ -335,8 +325,10 @@ document.addEventListener('touchend', () => {
   const finalLeft = isNaN(currentLeft) ? sidebarBaseLeft : currentLeft
   const progress = (finalLeft + sw) / sw
   if (progress <= 0.15) {
+    // 太靠近边缘，自动收回
     snapSidebar(false)
   } else {
+    // 保持在用户松手的位置
     sidebarEl.style.transition = ''
     sidebarEl.style.left = finalLeft + 'px'
     sidebarOverlay.style.transition = ''
