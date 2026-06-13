@@ -9,10 +9,63 @@ import {
   findElementForNote,
   computeElementIndex,
   computeBreadcrumb,
+  ANNOTATABLE_SELECTOR,
+  computeContentFingerprint,
 } from '../api'
 import { marked } from 'marked'
 
 const STORAGE_KEY = 'app.changeNotes.v1'
+const SOURCE_KEY = 'app.authorName.v1'
+
+// --- Source name（"名字系统"）：用户的代号 / 昵称 ---
+// 语义：
+//   - localStorage 有 SOURCE_KEY → 用户已命名，创建标注时用这个名字
+//   - localStorage 无 SOURCE_KEY → "我是谁" 用户，导出时才被迫命名
+//   - 标注的 author 字段：具体某条记录是谁写的
+export function getSourceName(): string {
+  return localStorage.getItem(SOURCE_KEY) || ''
+}
+
+export function setSourceName(name: string): void {
+  const trimmed = (name || '').trim()
+  if (!trimmed) {
+    localStorage.removeItem(SOURCE_KEY)
+    return
+  }
+  localStorage.setItem(SOURCE_KEY, trimmed)
+}
+
+function isAnonUpgraded(): boolean {
+  return !!localStorage.getItem('anon-upgraded')
+}
+
+function authorForNewNote(): string {
+  return getSourceName() || (isAnonUpgraded() ? '匿名的人' : '匿名旅人')
+}
+
+// 把当前 changes 里所有匿名标注（"匿名旅人"或"匿名的人"）批量更新为某个名字
+// 用于"我是谁"用户导出时第一次命名：让他之前写的所有标注都带上他的名字
+export function rewriteAnonAuthorTo(newName: string): number {
+  let updated = 0
+  for (const n of changes) {
+    if (n.author === '匿名旅人' || n.author === '匿名的人') {
+      n.author = newName
+      updated++
+    }
+  }
+  return updated
+}
+
+// 作者颜色映射：根据 author 字符串稳定哈希到 0..N-1，对应不同颜色 class
+export function authorColorClass(author: string): string {
+  if (!author) return 'author-chip-0'
+  let h = 0
+  for (let i = 0; i < author.length; i++) {
+    h = (h * 31 + author.charCodeAt(i)) | 0
+  }
+  const idx = Math.abs(h) % 8
+  return `author-chip-${idx}`
+}
 
 // --- Session state ---
 let changes: ChangeNote[] = loadFromStorage().map(ensureTargetKey)
@@ -187,9 +240,36 @@ export function initChangesSystem(): void {
   document.getElementById('changes-close')!.addEventListener('click', closeChangesPanel)
   document.getElementById('annotate-save')!.addEventListener('click', saveAnnotate)
 
-  // 批量下载（打包为单一 JSON 文件）
+  // 批量下载：已命名 → 直接导出；未命名 → 弹命名对话框
+  // 命名由外部模块（main.ts）负责，通过 'identity-ensure' 事件触发
+  // 外部命名完成后派发 'author-named' → 我们做批量更新；再派发 'identity-ready' → 我们导出
+  function doExport(): void {
+    persistAndRefresh() // 确保任何批量更新已写回 localStorage
+    downloadAllChanges(changes, getSourceName() || undefined)
+  }
+
+  // 命名完成（第一次拥有了名字）：把"匿名旅人"批量更新为新名字
+  window.addEventListener('author-named', ((ev: CustomEvent) => {
+    const name = (ev.detail?.name as string) || ''
+    if (!name) return
+    const updated = rewriteAnonAuthorTo(name)
+    if (updated > 0) persistAndRefresh()
+  }) as EventListener)
+
+  window.addEventListener('identity-ready', (() => {
+    doExport()
+  }) as EventListener)
+
   document.getElementById('changes-download-all')!.addEventListener('click', () => {
-    downloadAllChanges(changes)
+    const name = getSourceName()
+    if (name) {
+      doExport()
+      return
+    }
+    // 还没有名字 —— 触发命名流程
+    // dispatchEvent 在 handler 调 preventDefault() 后返回 false → 表示有人处理了
+    const canceled = !window.dispatchEvent(new CustomEvent('identity-ensure', { cancelable: true }))
+    if (!canceled) doExport() // 无人处理（没监听器），降级直接导出
   })
 
   // 清空记录
@@ -237,10 +317,11 @@ export function initChangesSystem(): void {
             continue
           }
           // 导入的记录若缺少字段则补默认值（importChangeNotesFromFile 已 ensureTargetKey）
+          // 保留原始 author（不覆盖为 bundle.source）—— 不同贡献者的标注在面板里用颜色区分
           changes.push({
             id: note.id || generateId(),
             type: note.type || 'annotation',
-            author: note.author || 'imported',
+            author: note.author || (isAnonUpgraded() ? '匿名的人' : '匿名旅人'),
             timestamp: note.timestamp || new Date().toISOString(),
             target: note.target || { docPath: '' },
             content: note.content || { summary: '(无标题)', body: '', tags: [] },
@@ -511,7 +592,7 @@ function openBadgePopover(badge: HTMLElement, notes: ChangeNote[]): void {
     <div class="badge-popover-item" data-id="${n.id}">
       <span class="change-badge change-badge-${n.type}">${typeLabels[n.type] || n.type}</span>
       <div class="badge-popover-body">
-        <div class="badge-popover-title">${esc(n.content.summary)}</div>
+        <div class="badge-popover-title">${esc(n.content.summary)} <span class="author-chip ${authorColorClass(n.author)}" style="font-size:10px; padding:1px 6px; margin-left:4px;">${esc(n.author)}</span></div>
         ${n.content.body ? `<div class="badge-popover-snippet">${esc(n.content.body.slice(0, 60))}${n.content.body.length > 60 ? '...' : ''}</div>` : ''}
         <div class="badge-popover-meta">${formatTime(n.timestamp)} · ${statusLabels[n.status] || n.status}</div>
       </div>
@@ -660,7 +741,7 @@ export function scanAndRenderBadges(container: HTMLElement, docPath: string): vo
   if (notesByElement.size === 0) return
 
   // 步骤 2：为每个有归属 note 的元素渲染角标
-  const elements = Array.from(container.querySelectorAll('h1, h2, h3, p') as NodeListOf<HTMLElement>)
+  const elements = Array.from(container.querySelectorAll(ANNOTATABLE_SELECTOR) as NodeListOf<HTMLElement>)
   const renderedBadges: { badge: HTMLElement; element: HTMLElement; notes: ChangeNote[] }[] = []
 
   elements.forEach(el => {
@@ -672,6 +753,13 @@ export function scanAndRenderBadges(container: HTMLElement, docPath: string): vo
     badge.textContent = String(matched.length)
     badge.title = `${matched.length} 条变更记录：点击查看`
     pickBadgeColorClass(badge, matched)
+
+    // contentFingerprint 变更检测：如果任何一条 note 的指纹与当前段落不匹配，加"已变更"类
+    const currentFp = computeContentFingerprint(el)
+    const hasChangedContent = matched.some(n => n.contentFingerprint && n.contentFingerprint !== currentFp)
+    if (hasChangedContent) {
+      badge.classList.add('annotate-badge-changed')
+    }
 
     // 点击角标 → 打开气泡（再次点击关闭）
     badge.addEventListener('pointerdown', (e) => {
@@ -825,7 +913,7 @@ function saveAnnotate(): void {
     const change: ChangeNote = {
       id: generateId(),
       type,
-      author: 'user',
+      author: authorForNewNote(),
       timestamp: new Date().toISOString(),
       target: {
         docPath: currentDocPath || '',
@@ -845,6 +933,7 @@ function saveAnnotate(): void {
       },
       status: 'pending',
       targetKey: tKey || '',
+      contentFingerprint: currentTargetEl ? computeContentFingerprint(currentTargetEl) : undefined,
     }
     changes.unshift(change)
   }
@@ -924,6 +1013,7 @@ function updateChangesList(): void {
     <div class="change-item" data-id="${c.id}">
       <div class="change-item-header">
         <span class="change-badge change-badge-${c.type}">${typeLabels[c.type] || c.type}</span>
+        <span class="author-chip ${authorColorClass(c.author)}" title="作者：${esc(c.author)}">${esc(c.author)}</span>
         <span class="change-id">${c.id}</span>
         <div style="margin-left:auto; display:flex; gap:4px;">
           <button class="change-action" data-act="expand" title="展开/缩合">&#9660;</button>
@@ -942,7 +1032,7 @@ function updateChangesList(): void {
         ${c.content.tags && c.content.tags.length ? `<div class="change-item-tags">${c.content.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         ${c.content.reference ? `<div class="change-item-ref">参考：${esc(c.content.reference)}</div>` : ''}
         ${c.content.relatedDocs && c.content.relatedDocs.length ? `<div class="change-item-related">关联：${c.content.relatedDocs.map(d => esc(d)).join(' · ')}</div>` : ''}
-        <div class="change-item-time">${formatTime(c.timestamp)} · ${esc(c.author)}</div>
+        <div class="change-item-time">${formatTime(c.timestamp)}</div>
       </div>
     </div>
   `).join('')

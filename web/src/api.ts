@@ -33,6 +33,7 @@ export interface ChangeNote {
   content: ChangeContent
   status: ChangeStatus
   targetKey: string          // 稳定定位键：docPath|tag|textExcerpt
+  contentFingerprint?: string // 创建时段落文本的指纹（用于检测段落内容是否变更）
 }
 
 // --- 导出格式（批量下载时的外层容器） ---
@@ -42,6 +43,9 @@ export interface ChangeNoteBundle {
   count: number
   notes: ChangeNote[]
 }
+
+// 可标注元素的选择器（全项目统一使用此常量，修改一处即可扩展标注范围）
+export const ANNOTATABLE_SELECTOR = 'h1, h2, h3, p'
 
 // --- Helpers ---
 
@@ -67,6 +71,16 @@ export function computeTargetKey(
   return `${docPath}|${tag}|${text}`
 }
 
+/** 段落文本指纹：取文本内容的前 120 字做简单 hash，用于检测段落是否被编辑过 */
+export function computeContentFingerprint(element: HTMLElement): string {
+  const text = (element.textContent || '').trim().slice(0, 120)
+  let hash = 0
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0
+  }
+  return (hash >>> 0).toString(36)
+}
+
 /** 给缺少 targetKey 的旧记录回填（从已有字段推导） */
 export function ensureTargetKey(note: ChangeNote): ChangeNote {
   if (note.targetKey) return note
@@ -79,8 +93,9 @@ export function ensureTargetKey(note: ChangeNote): ChangeNote {
 /**
  * 判定一条 note 是否应当绑定到某个元素：
  *   1) 精确匹配 targetKey（首选）
- *   2) 同 docPath 且 tag 相同，且 note.elementText 是 element 文本的前缀/包含关系
- *   3) 同 docPath 且 note.target.section 等于 element 文本（标题兜底）
+ *   2) tag + 文本包含（双向）
+ *   3) 同 docPath 且 note.elementIndex 与当前元素序号一致（文本变了但位置没变的场景）
+ *   4) section（标题）兜底：仅对 h2/h3 生效
  *
  * 返回匹配分数（0 表示不匹配），便于在多个候选里挑最佳。
  */
@@ -103,7 +118,13 @@ export function scoreMatch(note: ChangeNote, docPath: string, element: HTMLEleme
     if (elementText.includes(noteText) || noteText.includes(elementText.slice(0, 30))) return 60
   }
 
-  // 3) section（标题）兜底：仅对 h2/h3 生效
+  // 3) elementIndex 匹配（文本已变但段落位置未变时兜底）
+  if (note.target.elementIndex && note.target.elementType === tag) {
+    const currentIndex = computeElementIndex(element)
+    if (note.target.elementIndex === currentIndex) return 50
+  }
+
+  // 4) section（标题）兜底：仅对 h2/h3 生效
   if ((tag === 'h2' || tag === 'h3') && note.target.section) {
     if (elementText === note.target.section) return 80
   }
@@ -117,7 +138,7 @@ export function findElementForNote(
   docPath: string,
   note: ChangeNote,
 ): HTMLElement | null {
-  const candidates = container.querySelectorAll('h1, h2, h3, p') as NodeListOf<HTMLElement>
+  const candidates = container.querySelectorAll(ANNOTATABLE_SELECTOR) as NodeListOf<HTMLElement>
   let best: HTMLElement | null = null
   let bestScore = 0
   candidates.forEach(el => {
@@ -163,14 +184,15 @@ export function downloadChangeNote(change: ChangeNote): void {
 }
 
 /** 批量下载：打包成单一 JSON 文件 —— 不再分别弹窗，浏览器友好 */
-export function downloadAllChanges(changes: ChangeNote[]): void {
+export function downloadAllChanges(changes: ChangeNote[], exportedBy?: string): void {
   if (!changes || changes.length === 0) return
   const safeNotes = changes.map(ensureTargetKey)
-  const bundle: ChangeNoteBundle = {
+  const bundle: ChangeNoteBundle & { exportedBy?: string } = {
     version: 1,
     exportedAt: new Date().toISOString(),
     count: safeNotes.length,
     notes: safeNotes,
+    exportedBy: exportedBy || undefined,
   }
   const json = JSON.stringify(bundle, null, 2)
   const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')

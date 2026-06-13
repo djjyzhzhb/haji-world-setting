@@ -1,6 +1,7 @@
 import './style.css'
 import { marked } from 'marked'
-import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges, scrollToNoteInContent } from './ui/changes'
+import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges, scrollToNoteInContent, getSourceName, setSourceName } from './ui/changes'
+import { ANNOTATABLE_SELECTOR } from './api'
 
 // --- Types ---
 interface NavItem {
@@ -547,8 +548,8 @@ function renderContent(doc: DocEntry) {
 // --- Annotate button hover/tap 绑定（只在初始化时调用一次） ---
 // 所有可见性判断、位置计算都在 bindAnnotateZones 内部处理（单一状态源）。
 function initAnnotateHoverSystem(): void {
-  // 为内容区域绑定 annotate 按钮（含 h1 以支持 home.md 标题）
-  bindAnnotateZones(contentArea, 'h1, h2, h3, p', () => {
+  // 为内容区域绑定 annotate 按钮
+  bindAnnotateZones(contentArea, ANNOTATABLE_SELECTOR, () => {
     return currentDoc?.path || ''
   })
 }
@@ -752,6 +753,256 @@ if (sidebarTitle) {
   })
 }
 
+// ============================================================
+// 名字系统：你还记得你的名字吗？
+// ============================================================
+// 设计思路：
+//   - "当然记得" → 用户立刻输入名字 → 存 localStorage → 仪式感反馈
+//   - "我是谁" → 不强迫命名 → 标注 author 暂用"匿名旅人"
+//   - "我是谁"用户导出时 → 弹"命运已至"命名对话框 → 第一次拥有名字
+// 为什么导出时才命名？因为导出意味着"把自己的思考发出去"——那一刻需要一个身份。
+// 同时，用户的名字会写进导出的 JSON 文件。以后就算缓存被清，他发给别人的文件里有他的名字。
+
+function randomPoeticName(): string {
+  const words = ['森林', '星辰', '夜风', '月光', '潮汐', '旅人', '萤火', '晨雾', '残雪', '远山', '微光', '潮汐', '流浪', '追梦者', '星尘', '孤舟']
+  const nums = Math.floor(Math.random() * 90) + 10
+  return words[Math.floor(Math.random() * words.length)] + nums
+}
+
+// 通用：显示"启示性文字"——一行神秘/仪式感的文字，慢慢淡出
+function showRevelation(text: string, onDone?: () => void): void {
+  const existing = document.querySelector('.revelation-overlay')
+  if (existing) existing.remove()
+
+  const overlay = document.createElement('div')
+  overlay.className = 'revelation-overlay'
+  overlay.innerHTML = `<div class="revelation-text">${text}</div>`
+  document.body.appendChild(overlay)
+
+  // 强制触发 reflow 以启动动画
+  requestAnimationFrame(() => overlay.classList.add('show'))
+
+  setTimeout(() => {
+    overlay.classList.add('fade-out')
+    setTimeout(() => {
+      overlay.remove()
+      onDone?.()
+    }, 800)
+  }, 1600)
+}
+
+// 阶段 A：首次进入——"请问……你还记得你的名字吗？"
+function showIdentityDialog(onFinished?: () => void): void {
+  const existing = document.querySelector('.identity-overlay')
+  if (existing) existing.remove()
+
+  const overlay = document.createElement('div')
+  overlay.className = 'identity-overlay'
+
+  let currentStage: 'ask' | 'named' | 'anon' = 'ask'
+
+  function render(): void {
+    if (currentStage === 'ask') {
+      overlay.innerHTML = `
+        <div class="identity-dialog identity-dialog-ask">
+          <div class="identity-title">请问……你还记得你的名字吗？</div>
+          <div class="identity-buttons">
+            <button class="identity-btn identity-btn-primary" data-choice="named">当然记得！</button>
+            <button class="identity-btn" data-choice="anon">我是……谁？</button>
+          </div>
+        </div>`
+      const btns = overlay.querySelectorAll('[data-choice]')
+      btns.forEach(b => b.addEventListener('click', () => {
+        const choice = (b as HTMLElement).dataset.choice
+        if (choice === 'named') {
+          currentStage = 'named'
+          render()
+        } else {
+          // "我是谁" → 直接给一句诗，然后结束
+          currentStage = 'anon'
+          setSourceName('') // 清空
+          render()
+        }
+      }))
+    } else if (currentStage === 'named') {
+      overlay.innerHTML = `
+        <div class="identity-dialog">
+          <div class="identity-title">告诉我你的名字</div>
+          <div class="identity-input-row">
+            <input type="text" id="identity-name-input" placeholder="你的名字……" maxlength="20" />
+            <button class="identity-btn identity-btn-primary" id="identity-confirm">确定</button>
+          </div>
+          <div class="identity-hint">这个名字会写进你导出的 JSON，帮你在多份标注中被识别。</div>
+        </div>`
+      const input = overlay.querySelector('#identity-name-input') as HTMLInputElement
+      const confirm = overlay.querySelector('#identity-confirm') as HTMLElement
+      input.focus()
+      const doConfirm = () => {
+        const name = input.value.trim()
+        if (!name) {
+          input.classList.add('shake')
+          setTimeout(() => input.classList.remove('shake'), 600)
+          return
+        }
+        setSourceName(name)
+        localStorage.setItem('identity-asked', '1')
+        overlay.classList.add('fade-out')
+        setTimeout(() => overlay.remove(), 280)
+        showRevelation('你拥有坚韧的灵魂！', onFinished)
+      }
+      confirm.addEventListener('click', doConfirm)
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doConfirm()
+      })
+    } else {
+      // anon → 显示一句启示性文字后结束
+      overlay.innerHTML = `
+        <div class="identity-dialog identity-dialog-revelation">
+          <div class="identity-title identity-title-soft">
+            没关系，命运到来之时，<br/>它必将再度示现。
+          </div>
+          <div class="identity-buttons">
+            <button class="identity-btn identity-btn-primary" id="identity-anon-close">好的</button>
+          </div>
+        </div>`
+      overlay.querySelector('#identity-anon-close')!.addEventListener('click', () => {
+        dismiss()
+      })
+    }
+  }
+
+  function dismiss(): void {
+    localStorage.setItem('identity-asked', '1')
+    overlay.classList.add('fade-out')
+    setTimeout(() => {
+      overlay.remove()
+      onFinished?.()
+    }, 280)
+  }
+
+  render()
+  document.body.appendChild(overlay)
+  requestAnimationFrame(() => overlay.classList.add('show'))
+}
+
+// 阶段 B："我是谁"用户导出时——"命运已至！他名即为——"
+// 触发时机：changes.ts 中点击批量下载但还没名字时
+// 派发 'author-named'（让 changes.ts 批量更新"匿名旅人"为新名字）
+// 再派发 'identity-ready'（让 changes.ts 执行导出）
+// 返回用户（已匿名导出过）标题变为"你找回你的名字了吗？"
+// 并多一个勾选框"我早已不再迷茫。"
+function showNameForExportDialog(): void {
+  const existing = document.querySelector('.identity-overlay')
+  if (existing) existing.remove()
+
+  const hasExportedAnon = !!localStorage.getItem('anon-export-count') &&
+    parseInt(localStorage.getItem('anon-export-count') || '0', 10) > 0
+
+  const overlay = document.createElement('div')
+  overlay.className = 'identity-overlay'
+
+  function dismiss(): void {
+    localStorage.setItem('identity-asked', '1')
+    overlay.classList.add('fade-out')
+    setTimeout(() => overlay.remove(), 280)
+  }
+
+  overlay.innerHTML = `
+    <div class="identity-dialog">
+      <div class="identity-title identity-title-mystic">${hasExportedAnon ? '你找回你的名字了吗？' : '命运已至！他名即为——'}</div>
+      <div class="identity-input-row">
+        <input type="text" id="identity-export-input" placeholder="输入名字……" maxlength="20" />
+        <button class="identity-btn" id="identity-export-random" title="随机生成一个">?</button>
+        <button class="identity-btn identity-btn-primary" id="identity-export-confirm">就是他</button>
+      </div>
+      <div class="identity-hint">命名后，你所写的每一条标注都会拥有这个名字。它将写进你即将导出的 JSON。</div>
+      ${hasExportedAnon ? `<label style="display:flex; align-items:center; gap:8px; margin-top:12px; justify-content:center; font-size:12px; color:#6b5a80; cursor:pointer;">
+        <input type="checkbox" id="identity-found-check" />
+        我早已不再迷茫。
+      </label>` : ''}
+      <div class="identity-buttons" style="margin-top:14px;">
+        <button class="identity-btn" id="identity-export-anon">不，那不是我</button>
+      </div>
+    </div>`
+  document.body.appendChild(overlay)
+  requestAnimationFrame(() => overlay.classList.add('show'))
+
+  const input = overlay.querySelector('#identity-export-input') as HTMLInputElement
+  const randomBtn = overlay.querySelector('#identity-export-random') as HTMLElement
+  const confirmBtn = overlay.querySelector('#identity-export-confirm') as HTMLElement
+  const anonBtn = overlay.querySelector('#identity-export-anon') as HTMLElement
+  input.focus()
+
+  randomBtn.addEventListener('click', () => {
+    input.value = randomPoeticName()
+    input.focus()
+    input.select()
+  })
+
+  function doConfirm(): void {
+    const name = input.value.trim()
+    if (!name) {
+      input.classList.add('shake')
+      setTimeout(() => input.classList.remove('shake'), 600)
+      return
+    }
+    setSourceName(name)
+    const checkEl = document.getElementById('identity-found-check') as HTMLInputElement | null
+    const checkOn = hasExportedAnon && checkEl?.checked
+    dismiss()
+    window.dispatchEvent(new CustomEvent('author-named', { detail: { name } }))
+    setTimeout(() => {
+      showRevelation(checkOn ? `这是你的命运，亦是你的第一份契约，名叫${name}的人` : '这是你的命运，亦是你的第一份契约', () => {
+        window.dispatchEvent(new CustomEvent('identity-ready'))
+      })
+    }, 320)
+  }
+
+  function doAnon(): void {
+    const neverAgain = hasExportedAnon && (document.getElementById('identity-found-check') as HTMLInputElement)?.checked
+    if (neverAgain) {
+      localStorage.setItem('anon-export-never-ask', '1')
+      localStorage.setItem('anon-upgraded', '1')
+    }
+    const count = parseInt(localStorage.getItem('anon-export-count') || '0', 10) + 1
+    localStorage.setItem('anon-export-count', String(count))
+    dismiss()
+    setTimeout(() => {
+      showRevelation(neverAgain ? '现在，你既是你的方向，不会迷失的人' : '你的命运果然在自己手中', () => {
+        window.dispatchEvent(new CustomEvent('identity-ready'))
+      })
+    }, 320)
+  }
+
+  confirmBtn.addEventListener('click', doConfirm)
+  anonBtn.addEventListener('click', doAnon)
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doConfirm()
+  })
+}
+
+// ============================================================
+// 名字系统：事件入口
+// ============================================================
+// 首次进入逻辑内联在初始化流程中（见 main.ts 底部的 showIdentityDialog 调用）
+// 这里处理运行时的命名请求："我是谁"用户点导出时命名
+// 监听"我是谁"用户导出时的命名请求
+window.addEventListener('identity-ensure', ((ev: Event) => {
+  if (getSourceName()) {
+    window.dispatchEvent(new CustomEvent('identity-ready'))
+    ev.preventDefault()
+    return
+  }
+  // 勾选了"我早已不再迷茫"后不再询问
+  if (localStorage.getItem('anon-export-never-ask')) {
+    window.dispatchEvent(new CustomEvent('identity-ready'))
+    ev.preventDefault()
+    return
+  }
+  showNameForExportDialog()
+  ev.preventDefault()
+}) as EventListener)
+
 // --- 欢迎弹窗（首次自动弹出，之后可通过右上角问号按钮切换）---
 function showWelcomeDialog(): void {
   const existing = document.querySelector('.welcome-overlay')
@@ -781,6 +1032,7 @@ function showWelcomeDialog(): void {
         <ul>
           <li><b>本地保存</b> — 将所有标注和变更记录导出为 JSON，作为你创作数据的备份</li>
           <li><b>为创作者提供内容</b> — 导出的 JSON 可交给维护者，帮助了解读者反馈、改进设定</li>
+          <li><b>养成习惯</b> — 每隔一段时间顺手点一下「批量下载」，JSON 在手，数据不愁</li>
         </ul>
       </div>
       <p class="welcome-disclaimer">（这个网页以及这条弹窗几乎全是 AI 做的，请多包涵他时不时抽风 (￣▽￣*)ゞ）</p>
@@ -812,9 +1064,28 @@ function showWelcomeDialog(): void {
   })
 }
 
-// 每次刷新都自动弹出（除非用户勾选了「不再显示」）
-if (!localStorage.getItem('welcome-dismissed')) {
-  showWelcomeDialog()
+// 名字系统：启示文字与欢迎弹窗分离
+// 启示文字（"我还没忘记你" / "你会去往何方"）每次访问都显示
+// 欢迎弹窗仅在被勾选"不再自动弹出"时跳过
+if (!localStorage.getItem('identity-asked')) {
+  showIdentityDialog(() => {
+    if (!localStorage.getItem('welcome-dismissed')) {
+      setTimeout(showWelcomeDialog, 300)
+    }
+  })
+} else {
+  const name = getSourceName()
+  const upgraded = !!localStorage.getItem('anon-upgraded')
+  const revelationText = name
+    ? `我还没忘记你，${name}`
+    : upgraded
+      ? '我曾见过你，匿名的人'
+      : '你会去往何方？无名的旅人'
+  showRevelation(revelationText, () => {
+    if (!localStorage.getItem('welcome-dismissed')) {
+      setTimeout(showWelcomeDialog, 300)
+    }
+  })
 }
 
 // 右上角帮助按钮：切换弹窗
