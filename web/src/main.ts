@@ -233,15 +233,23 @@ const sidebarEl = document.getElementById('sidebar')!
 
 // 滑动状态
 let dragStartX = 0
-let dragCurrentX = 0
+let touchStartY = 0
 let isDragging = false
-let sidebarOpenAtDragStart = false
+let potentialDrag = false
+let sidebarBaseLeft = 0
 
 function getSidebarWidth(): number {
   return sidebarEl.getBoundingClientRect().width
 }
 
+function getSidebarLeft(): number {
+  const inline = parseFloat(sidebarEl.style.left)
+  if (!isNaN(inline)) return inline
+  return sidebarEl.classList.contains('open') ? 0 : -getSidebarWidth()
+}
+
 function setSidebarPos(px: number): void {
+  sidebarEl.classList.remove('open')
   sidebarEl.style.transition = 'none'
   sidebarEl.style.left = px + 'px'
   sidebarOverlay.style.transition = 'none'
@@ -278,43 +286,70 @@ function closeSidebar(): void {
   snapSidebar(false)
 }
 
-// 触摸滑动
+function isSidebarVisible(): boolean {
+  return getSidebarLeft() > -getSidebarWidth()
+}
+
+// 触摸滑动 — 先记录起始点，等 touchmove 判断方向后再决定是否拦截
 document.addEventListener('touchstart', (e) => {
   if (window.innerWidth > 768) return
   const touch = e.touches[0]
   dragStartX = touch.clientX
-  dragCurrentX = touch.clientX
-  sidebarOpenAtDragStart = sidebarEl.classList.contains('open')
-  // 左边缘或侧边栏本身触发
-  if (dragStartX <= 30 || sidebarOpenAtDragStart) {
-    isDragging = true
-    sidebarEl.style.left = sidebarOpenAtDragStart ? '0px' : (-getSidebarWidth() + 'px')
+  touchStartY = touch.clientY
+  isDragging = false
+  potentialDrag = false
+  sidebarBaseLeft = getSidebarLeft()
+  if (dragStartX <= 30 || sidebarBaseLeft > -getSidebarWidth()) {
+    potentialDrag = true
+    sidebarEl.classList.remove('open')
+    sidebarEl.style.left = sidebarBaseLeft + 'px'
     sidebarEl.style.transition = 'none'
   }
 }, { passive: false })
 
 document.addEventListener('touchmove', (e) => {
-  if (!isDragging) return
+  if (!potentialDrag) return
   const touch = e.touches[0]
-  dragCurrentX = touch.clientX
-  const delta = dragCurrentX - dragStartX
+  const dx = touch.clientX - dragStartX
+  const dy = touch.clientY - touchStartY
+
+  if (!isDragging) {
+    // 判断方向：移动太小时待定，垂直>水平则放弃为正常滚动
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+    if (Math.abs(dx) < Math.abs(dy)) { potentialDrag = false; return }
+    isDragging = true
+  }
+
+  e.preventDefault()
   const sw = getSidebarWidth()
-  const baseLeft = sidebarOpenAtDragStart ? 0 : -sw
-  const newLeft = Math.min(0, Math.max(-sw, baseLeft + delta))
+  const newLeft = Math.min(0, Math.max(-sw, sidebarBaseLeft + dx))
   setSidebarPos(newLeft)
 }, { passive: false })
 
 document.addEventListener('touchend', () => {
+  potentialDrag = false
   if (!isDragging) return
   isDragging = false
   const sw = getSidebarWidth()
-  const currentLeft = parseFloat(sidebarEl.style.left) || (sidebarOpenAtDragStart ? 0 : -sw)
-  const progress = (currentLeft + sw) / sw // 0=关闭, 1=打开
-  snapSidebar(progress > 0.4)
+  const currentLeft = parseFloat(sidebarEl.style.left)
+  const finalLeft = isNaN(currentLeft) ? sidebarBaseLeft : currentLeft
+  const progress = (finalLeft + sw) / sw
+  if (progress <= 0.15) {
+    snapSidebar(false)
+  } else {
+    sidebarEl.style.transition = ''
+    sidebarEl.style.left = finalLeft + 'px'
+    sidebarOverlay.style.transition = ''
+    sidebarOverlay.style.opacity = String(progress * 0.4)
+    sidebarOverlay.classList.toggle('visible', progress > 0)
+    hamburgerBtn.innerHTML = '✕'
+    hamburgerBtn.title = '关闭菜单'
+    hamburgerBtn.classList.add('hamburger-close')
+  }
 })
 
 hamburgerBtn.addEventListener('click', () => {
-  if (sidebarEl.classList.contains('open')) {
+  if (isSidebarVisible()) {
     closeSidebar()
   } else {
     openSidebar()
@@ -675,14 +710,6 @@ function expandAndHighlightNav(path: string) {
 // --- Search ---
 searchInput.addEventListener('input', () => {
   renderNavTree(directoryTree, navTree, searchInput.value.trim())
-})
-
-// 手机端：点击导航项后关闭侧边栏
-navTree.addEventListener('click', (e) => {
-  const target = e.target as HTMLElement
-  if (target.closest('.nav-link') || target.closest('.nav-section-header')) {
-    closeSidebar()
-  }
 })
 
 // --- 跨文档定位：当变更面板「定位」按钮按下且目标文档不在当前显示时，自动切换文档
