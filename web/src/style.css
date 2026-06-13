@@ -555,6 +555,20 @@ body {
     display: block;
   }
 
+  /* 侧边栏右侧拖动把手 */
+  .sidebar-drag-handle {
+    display: block;
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.12);
+    pointer-events: none;
+  }
+
   /* 汉堡按钮 */
   .hamburger-btn {
     display: flex;

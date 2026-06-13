@@ -231,11 +231,19 @@ document.body.appendChild(sidebarOverlay)
 
 const sidebarEl = document.getElementById('sidebar')!
 
+// 拖动把手
+const dragHandle = document.createElement('div')
+dragHandle.className = 'sidebar-drag-handle'
+sidebarEl.appendChild(dragHandle)
+
 // 滑动状态
 let dragStartX = 0
-let dragCurrentX = 0
+let dragStartY = 0
 let isDragging = false
+let dragPending = false
 let sidebarBaseLeft = 0   // 拖动起始时侧边栏的 left 值
+
+const DRAG_THRESHOLD = 8   // 超过此像素才视为拖动
 
 function getSidebarWidth(): number {
   return sidebarEl.getBoundingClientRect().width
@@ -289,35 +297,46 @@ function isSidebarVisible(): boolean {
   return getSidebarLeft() > -getSidebarWidth()
 }
 
+function activateDrag(): void {
+  isDragging = true
+  dragPending = false
+  sidebarEl.classList.remove('open')
+  sidebarEl.style.left = sidebarBaseLeft + 'px'
+  sidebarEl.style.transition = 'none'
+}
+
 // 触摸滑动
 document.addEventListener('touchstart', (e) => {
   if (window.innerWidth > 768) return
   const touch = e.touches[0]
   dragStartX = touch.clientX
-  dragCurrentX = touch.clientX
+  dragStartY = touch.clientY
   sidebarBaseLeft = getSidebarLeft()
-  // 左边缘或在侧边栏上时触发
+  // 左边缘或在侧边栏上时，标记为潜在拖动
   if (dragStartX <= 30 || sidebarBaseLeft > -getSidebarWidth()) {
-    isDragging = true
-    e.preventDefault()
-    sidebarEl.classList.remove('open')
-    sidebarEl.style.left = sidebarBaseLeft + 'px'
-    sidebarEl.style.transition = 'none'
+    dragPending = true
   }
-}, { passive: false })
+}, { passive: true })
 
 document.addEventListener('touchmove', (e) => {
+  if (!dragPending) return
+  const touch = e.touches[0]
+  const dx = Math.abs(touch.clientX - dragStartX)
+  const dy = Math.abs(touch.clientY - dragStartY)
+  // 横向移动超过阈值且不是纵向滚动，才激活拖动
+  if (dx > DRAG_THRESHOLD && dx > dy) {
+    activateDrag()
+  }
   if (!isDragging) return
   e.preventDefault()
-  const touch = e.touches[0]
-  dragCurrentX = touch.clientX
-  const delta = dragCurrentX - dragStartX
+  const delta = touch.clientX - dragStartX
   const sw = getSidebarWidth()
   const newLeft = Math.min(0, Math.max(-sw, sidebarBaseLeft + delta))
   setSidebarPos(newLeft)
 }, { passive: false })
 
 document.addEventListener('touchend', () => {
+  dragPending = false
   if (!isDragging) return
   isDragging = false
   const sw = getSidebarWidth()
