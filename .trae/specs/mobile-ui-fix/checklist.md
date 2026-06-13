@@ -1,0 +1,24 @@
+# Checklist
+
+- [x] `html { font-size: 8px/9px }` 已从媒体查询中移除
+- [x] `body` 上的 `touch-action: manipulation` 和 `-webkit-touch-callout: none` 已移除
+- [x] 视口 ≤768px 时正文段落字号 ≥ 15px（非 rem 缩放后的极小值）
+- [x] 视口 ≤768px 时内容区左右 padding 为 16px
+- [x] 视口 ≤768px 时侧边栏宽度 280px（固定 px），不依赖 vw
+- [x] 汉堡按钮触控区域 ≥ 44×44px
+- [x] 帮助按钮触控区域 ≥ 44×44px
+- [x] 点击汉堡按钮侧边栏从左侧滑入，带遮罩层
+- [x] 点击遮罩层或导航项后侧边栏关闭
+- [x] 表格在窄屏下可横向滚动，不溢出视口
+- [x] 视口 ≤600px 时标注面板 `width: 100vw; height: 100dvh; border-radius: 0`
+- [x] 标注面板表单字段字号 ≥ 16px（防 iOS 缩放），按钮高度 ≥ 44px
+- [x] 格式化工具栏按钮在手机端 ≥ 40×36px，一行可见
+- [x] 视口 ≤600px 时变更面板 `width: 100vw`
+- [x] 变更条目操作按钮触控区域 ≥ 36×36px
+- [x] 角标在 ≤600px 下 ≥ 26×26px，字号 ≥ 13px
+- [x] 气泡弹窗在 ≤600px 下 max-width: 90vw
+- [x] 主页 h1 在 ≤600px 下为 32px，正文 16px
+- [x] 欢迎弹窗按钮高度 ≥ 44px
+- [x] 关键区域添加了 `safe-area-inset` 适配
+- [x] 桌面端（>768px）布局不受影响
+- [x] 导航项文字在手机端清晰可读（≥ 13px）
