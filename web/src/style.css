@@ -34,7 +34,6 @@ body {
   overflow: hidden;
   height: 100vh;
   overscroll-behavior: none;
-  touch-action: pan-y pinch-zoom;
 }
 
 /* --- Layout --- */
@@ -519,7 +518,7 @@ body {
 /* --- Responsive --- */
 @media (max-width: 768px) {
   html {
-    font-size: 14px;          /* 基准字号，所有 rem 以此为参照 */
+    font-size: 11px;          /* 小范式基准 */
   }
 
   .layout {
@@ -529,8 +528,8 @@ body {
   .sidebar {
     position: fixed;
     top: 0;
-    left: -50vw;
-    width: 50vw;
+    left: -40vw;
+    width: 40vw;
     height: 100vh;
     height: 100dvh;
     z-index: 250;
@@ -563,9 +562,9 @@ body {
     right: 0;
     top: 50%;
     transform: translateY(-50%);
-    width: 6px;
-    height: 80px;
-    border-radius: 3px;
+    width: 4px;
+    height: 50px;
+    border-radius: 2px;
     background: rgba(255,255,255,0.15);
     cursor: col-resize;
     pointer-events: auto;
@@ -576,17 +575,17 @@ body {
   .hamburger-btn {
     display: flex;
     position: fixed;
-    top: 1.5vh;
-    left: 3vw;
-    width: 2.8rem;
-    height: 2.8rem;
+    top: 1vh;
+    left: 2vw;
+    width: 2.2rem;
+    height: 2.2rem;
     align-items: center;
     justify-content: center;
     background: var(--sidebar-bg);
     color: #ebe5f5;
     border: none;
-    border-radius: 0.5rem;
-    font-size: 1.5rem;
+    border-radius: 0.4rem;
+    font-size: 1.2rem;
     cursor: pointer;
     z-index: 230;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -596,108 +595,108 @@ body {
   .hamburger-btn.hamburger-close {
     z-index: 260;
     background: rgba(30, 27, 46, 0.9);
-    font-size: 1.3rem;
+    font-size: 1rem;
   }
 
   .content {
-    padding: 6vh 3vw 4vh;
+    padding: 4vh 2vw 4vh;
   }
 
   .content-body h1 {
-    font-size: 1.35rem;
-    margin: 1.5rem 0 0.7rem;
-    padding-bottom: 0.4rem;
+    font-size: 1.3rem;
+    margin: 1.2rem 0 0.5rem;
+    padding-bottom: 0.3rem;
   }
 
   .content-body h2 {
-    font-size: 1.15rem;
-    margin: 1.2rem 0 0.6rem;
-  }
-
-  .content-body h3 {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     margin: 1rem 0 0.4rem;
   }
 
-  .content-body p {
+  .content-body h3 {
     font-size: 1rem;
-    line-height: 1.65;
-    margin: 0.5rem 0;
+    margin: 0.8rem 0 0.3rem;
+  }
+
+  .content-body p {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    margin: 0.4rem 0;
   }
 
   .content-body li {
-    font-size: 1rem;
-    line-height: 1.6;
-    margin: 0.25rem 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0.2rem 0;
   }
 
   .content-body ul, .content-body ol {
-    margin: 0.5rem 0;
-    padding-left: 1.4rem;
+    margin: 0.4rem 0;
+    padding-left: 1.2rem;
   }
 
   .content-body table {
     display: block;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    font-size: 0.9rem;
-  }
-
-  .content-body th, .content-body td {
-    padding: 0.4rem 0.7rem;
-  }
-
-  .content-body blockquote {
-    margin: 0.7rem 0;
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
-  }
-
-  .content-body pre {
-    padding: 0.8rem 1rem;
-    font-size: 0.9rem;
-    margin: 0.8rem 0;
-  }
-
-  .content-body code {
-    font-size: 0.9rem;
-  }
-
-  .content-title {
-    font-size: 1.4rem;
-    margin-bottom: 1rem;
-    padding-bottom: 0.6rem;
-  }
-
-  /* 侧边栏内部更紧凑 */
-  .sidebar-header {
-    padding: 1rem 1rem 0.8rem;
-  }
-
-  .sidebar-title {
-    font-size: 1.5rem;
-    margin-bottom: 0.8rem;
-  }
-
-  .nav-link {
-    padding: 0.35rem 1rem 0.35rem calc(var(--nav-indent-base) + var(--nav-depth-step) * var(--depth, 0) + var(--nav-text-indent));
     font-size: 0.85rem;
   }
 
-  .nav-section-header {
-    padding: 0.4rem 1rem 0.4rem calc(var(--nav-indent-base) + var(--nav-depth-step) * var(--depth, 0));
+  .content-body th, .content-body td {
+    padding: 0.3rem 0.5rem;
+  }
+
+  .content-body blockquote {
+    margin: 0.5rem 0;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.95rem;
+  }
+
+  .content-body pre {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+    margin: 0.6rem 0;
+  }
+
+  .content-body code {
+    font-size: 0.85rem;
+  }
+
+  .content-title {
+    font-size: 1.3rem;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.5rem;
+  }
+
+  /* 侧边栏内部 */
+  .sidebar-header {
+    padding: 0.8rem 0.8rem 0.6rem;
+  }
+
+  .sidebar-title {
+    font-size: 1.3rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .nav-link {
+    padding: 0.3rem 0.8rem 0.3rem calc(var(--nav-indent-base) + var(--nav-depth-step) * var(--depth, 0) + var(--nav-text-indent));
     font-size: 0.8rem;
+  }
+
+  .nav-section-header {
+    padding: 0.35rem 0.8rem 0.35rem calc(var(--nav-indent-base) + var(--nav-depth-step) * var(--depth, 0));
+    font-size: 0.75rem;
   }
 }
 
 @media (max-width: 600px) {
   html {
-    font-size: 13px;
+    font-size: 10px;
   }
 
   .sidebar {
-    width: 57vw;
-    left: -57vw;
+    width: 45vw;
+    left: -45vw;
   }
 
   .sidebar.open {
@@ -705,35 +704,35 @@ body {
   }
 
   .home-content h1 {
-    font-size: 2rem;
+    font-size: 1.8rem;
   }
 
   .home-content p {
-    font-size: 1.1rem;
-    line-height: 1.7;
+    font-size: 1rem;
+    line-height: 1.6;
     max-width: 100%;
-    padding: 0 4vw;
+    padding: 0 3vw;
   }
 
   .home-content {
-    margin-top: -3vh;
-    gap: 0.8rem;
+    margin-top: -2vh;
+    gap: 0.6rem;
   }
 
   .hamburger-btn {
-    top: 1.2vh;
-    left: 3vw;
-    width: 2.6rem;
-    height: 2.6rem;
-    font-size: 1.4rem;
-    border-radius: 0.4rem;
+    top: 0.8vh;
+    left: 2vw;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.1rem;
+    border-radius: 0.3rem;
   }
 
   .hamburger-btn.hamburger-close {
-    font-size: 1.2rem;
+    font-size: 0.9rem;
   }
 
-  /* 标注面板：不占满全屏，留边 */
+  /* 标注面板 */
   .annotate-panel-card {
     width: 95vw;
     max-width: 95vw;
@@ -741,72 +740,72 @@ body {
     height: 92dvh;
     max-height: 92vh;
     max-height: 92dvh;
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
   }
 
   .annotate-panel-header {
-    padding: 0.7rem 1rem;
+    padding: 0.5rem 0.8rem;
   }
 
   .annotate-panel-header h3 {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   .annotate-panel-body {
-    padding: 0.8rem 1rem;
+    padding: 0.6rem 0.8rem;
   }
 
   .annotate-panel-footer {
-    padding: 0.7rem 1rem;
-    gap: 0.5rem;
+    padding: 0.5rem 0.8rem;
+    gap: 0.4rem;
   }
 
   .annotate-field {
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.6rem;
   }
 
   .annotate-field label {
-    font-size: 0.8rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.2rem;
   }
 
   .annotate-field select,
   .annotate-field input,
   .annotate-field textarea {
-    font-size: 1rem;
-    padding: 0.5rem 0.7rem;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.5rem;
   }
 
   .annotate-field textarea {
-    min-height: 5rem;
+    min-height: 4rem;
   }
 
   .annotate-panel-footer .btn {
-    padding: 0.7rem 1rem;
-    font-size: 1rem;
-    min-height: 2.8rem;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.9rem;
+    min-height: 2.4rem;
   }
 
   /* 格式化工具栏 */
   .annotate-format-toolbar {
-    gap: 0.3rem;
+    gap: 0.2rem;
   }
 
   .annotate-format-toolbar button {
-    min-width: 2.5rem;
-    height: 2.2rem;
-    font-size: 1rem;
-    border-radius: 0.35rem;
+    min-width: 2.2rem;
+    height: 1.8rem;
+    font-size: 0.85rem;
+    border-radius: 0.3rem;
   }
 
   /* 角标 */
   .annotate-badge {
-    min-width: 1.7rem;
-    height: 1.7rem;
-    padding: 0 0.4rem;
-    border-radius: 0.85rem;
-    font-size: 0.85rem;
-    line-height: 1.7rem;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.35rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.5rem;
   }
 
   /* 气泡弹窗 */
@@ -823,123 +822,123 @@ body {
     max-height: 35vh;
   }
 
-  /* 变更记录面板：不占满全屏 */
+  /* 变更记录面板 */
   .changes-panel {
     width: 88vw;
     right: -88vw;
   }
 
   .changes-panel-header {
-    padding: 0.7rem 1rem;
+    padding: 0.5rem 0.8rem;
   }
 
   .changes-panel-header h3 {
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
 
   .changes-panel-toolbar {
-    padding: 0.5rem 0.7rem;
-    gap: 0.3rem;
+    padding: 0.4rem 0.5rem;
+    gap: 0.2rem;
   }
 
   .panel-search-input {
-    font-size: 1rem;
-    padding: 0.5rem 0.7rem 0.5rem 2.2rem;
-    background-position: 0.7rem center;
-    background-size: 0.9rem 0.9rem;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.5rem 0.4rem 1.8rem;
+    background-position: 0.5rem center;
+    background-size: 0.8rem 0.8rem;
   }
 
   .panel-status-select {
-    font-size: 1rem;
-    padding: 0.5rem 0.7rem;
-    min-width: 5.5rem;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.5rem;
+    min-width: 5rem;
   }
 
   .changes-panel-body {
-    padding: 0.5rem;
+    padding: 0.4rem;
   }
 
   .change-item {
-    padding: 0.7rem;
-    margin-bottom: 0.4rem;
+    padding: 0.5rem;
+    margin-bottom: 0.3rem;
   }
 
   .change-item-header {
     flex-wrap: wrap;
-    gap: 0.25rem;
+    gap: 0.2rem;
   }
 
   .change-action {
-    padding: 0.35rem 0.5rem;
-    font-size: 0.9rem;
-    min-width: 2.2rem;
-    min-height: 2.2rem;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.8rem;
+    min-width: 1.8rem;
+    min-height: 1.8rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
 
   .change-item-title {
-    font-size: 0.95rem;
-  }
-
-  .change-item-body {
     font-size: 0.85rem;
   }
 
+  .change-item-body {
+    font-size: 0.75rem;
+  }
+
   .changes-panel-footer {
-    padding: 0.5rem;
-    gap: 0.4rem;
+    padding: 0.4rem;
+    gap: 0.3rem;
   }
 
   .changes-panel-footer button {
-    font-size: 0.9rem;
-    padding: 0.5rem 0.8rem;
-    min-height: 2.5rem;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+    min-height: 2rem;
   }
 
   .changes-toggle {
-    bottom: 2vh;
-    right: 3vw;
-    width: 3rem;
-    height: 3rem;
+    bottom: 1.5vh;
+    right: 2vw;
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   .changes-count {
-    width: 1.2rem;
-    height: 1.2rem;
-    font-size: 0.7rem;
-    top: -0.2rem;
-    right: -0.2rem;
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.6rem;
+    top: -0.15rem;
+    right: -0.15rem;
   }
 
   .welcome-overlay {
-    padding: 3vw;
+    padding: 2vw;
   }
 
   .welcome-dialog {
     max-width: 100%;
-    border-radius: 8px;
+    border-radius: 6px;
     max-height: 90vh;
   }
 
   .welcome-header {
-    font-size: 18px;
-    padding: 18px 20px 14px;
+    font-size: 1.5rem;
+    padding: 1.2rem 1.5rem 1rem;
   }
 
   .welcome-body {
-    font-size: 13px;
-    padding: 12px 20px 16px;
+    font-size: 1.1rem;
+    padding: 0.8rem 1.5rem 1rem;
   }
 
   .welcome-footer {
-    padding: 12px 20px 20px;
+    padding: 0.8rem 1.5rem 1.2rem;
   }
 
   .welcome-btn {
-    font-size: 14px;
-    padding: 10px;
+    font-size: 1.1rem;
+    padding: 0.8rem;
   }
 }
 
