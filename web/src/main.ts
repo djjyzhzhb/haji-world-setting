@@ -738,6 +738,12 @@ initAnnotateHoverSystem()
 // 初始自动加载主页
 loadDocument('home.md')
 
+// --- 屏蔽浏览器返回手势（含 iOS Safari 左滑返回） ---
+history.pushState(null, '', location.href)
+window.addEventListener('popstate', () => {
+  history.pushState(null, '', location.href)
+})
+
 // --- Sidebar Title Click: Return to Home Page ---
 const sidebarTitle = document.querySelector('.sidebar-title') as HTMLElement
 if (sidebarTitle) {
