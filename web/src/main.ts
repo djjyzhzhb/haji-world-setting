@@ -1,6 +1,6 @@
 import './style.css'
 import { marked } from 'marked'
-import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges, scrollToNoteInContent, getSourceName, setSourceName } from './ui/changes'
+import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges, scrollToNoteInContent, getSourceName, setSourceName, hideAnnotateBtn } from './ui/changes'
 import { ANNOTATABLE_SELECTOR } from './api'
 
 // --- Types ---
@@ -467,6 +467,8 @@ function renderNavTree(items: NavItem[], container: HTMLElement, filter: string 
 
 // --- Load document ---
 async function loadDocument(path: string) {
+  // 切换文档时立即隐藏「+」按钮，防止残留在旧文档位置
+  hideAnnotateBtn()
 
   // Check cache
   if (docs.has(path)) {
@@ -832,11 +834,20 @@ function showIdentityDialog(onFinished?: () => void): void {
             <input type="text" id="identity-name-input" placeholder="你的名字……" maxlength="20" />
             <button class="identity-btn identity-btn-primary" id="identity-confirm">确定</button>
           </div>
-          <div class="identity-hint">这个名字会写进你导出的 JSON，帮你在多份标注中被识别。</div>
+          <div class="identity-hint">这个名字会写进你导出的存档，帮你在多份标注中被识别。</div>
+          <div class="identity-buttons" style="margin-top:10px;">
+            <button class="identity-btn" id="identity-back-to-anon">算了，我不记得了</button>
+          </div>
         </div>`
       const input = overlay.querySelector('#identity-name-input') as HTMLInputElement
       const confirm = overlay.querySelector('#identity-confirm') as HTMLElement
+      const backBtn = overlay.querySelector('#identity-back-to-anon') as HTMLElement
       input.focus()
+      backBtn.addEventListener('click', () => {
+        currentStage = 'anon'
+        setSourceName('')
+        render()
+      })
       const doConfirm = () => {
         const name = input.value.trim()
         if (!name) {
@@ -915,7 +926,7 @@ function showNameForExportDialog(): void {
         <button class="identity-btn" id="identity-export-random" title="随机生成一个">?</button>
         <button class="identity-btn identity-btn-primary" id="identity-export-confirm">就是他</button>
       </div>
-      <div class="identity-hint">命名后，你所写的每一条标注都会拥有这个名字。它将写进你即将导出的 JSON。</div>
+      <div class="identity-hint">命名后，你所写的每一条标注都会拥有这个名字。它将写进你即将导出的存档。</div>
       ${hasExportedAnon ? `<label style="display:flex; align-items:center; gap:8px; margin-top:12px; justify-content:center; font-size:12px; color:#6b5a80; cursor:pointer;">
         <input type="checkbox" id="identity-found-check" />
         我早已不再迷茫。
@@ -1022,17 +1033,17 @@ function showWelcomeDialog(): void {
       <p>在这个世界观设定集中，你可以：</p>
       <ul>
         <li><b>浏览</b> — 左侧导航探索地理、历史、种族、力量体系等设定文档</li>
-        <li><b>标注</b> — 悬停任意段落，点击出现的「+」按钮，为段落添加你的笔记、批注和标记</li>
+        <li><b>标注</b> — 悬停任意段落，点击出现的 <strong class="welcome-plus">「+」</strong> 按钮，为段落添加你的笔记、批注和标记</li>
         <li><b>搜索</b> — 顶部搜索框快速定位任何设定内容</li>
-        <li><b>追踪变更</b> — 点击右下角编辑图标，随时记录修改思路、设定演变和待办事项</li>
+        <li><b>追踪变更</b> — 点击右下角的笔形图标，随时记录修改思路、设定演变和待办事项</li>
         <li><b>移动端</b> — 左上角菜单按钮打开导航，拖拽侧边栏右侧把手自由调整宽度</li>
       </ul>
       <div class="welcome-section">
-        <p><b>关于「导出 JSON」</b></p>
+        <p><b>关于「导出存档」</b></p>
         <ul>
-          <li><b>本地保存</b> — 将所有标注和变更记录导出为 JSON，作为你创作数据的备份</li>
-          <li><b>为创作者提供内容</b> — 导出的 JSON 可交给维护者，帮助了解读者反馈、改进设定</li>
-          <li><b>养成习惯</b> — 每隔一段时间顺手点一下「批量下载」，JSON 在手，数据不愁</li>
+          <li><b>本地保存</b> — 将所有标注和变更记录导出为存档，作为你创作数据的备份</li>
+          <li><b>为创作者提供内容</b> — 导出的存档可交给维护者，帮助了解读者反馈、改进设定</li>
+          <li><b>养成习惯</b> — 每隔一段时间顺手点一下「批量下载」，存档在手，数据不愁</li>
         </ul>
       </div>
       <p class="welcome-disclaimer">（这个网页以及这条弹窗几乎全是 AI 做的，请多包涵他时不时抽风 (￣▽￣*)ゞ）</p>

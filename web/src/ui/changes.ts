@@ -178,11 +178,11 @@ export function initChangesSystem(): void {
         </div>
         <div class="annotate-field">
           <label>引用/参考来源</label>
-          <input type="text" id="annotate-reference" placeholder="其他文档路径、外部链接等" />
+          <input type="text" id="annotate-reference" placeholder="可输入文档名称或外部链接等" />
         </div>
         <div class="annotate-field">
           <label>关联文档（逗号分隔）</label>
-          <input type="text" id="annotate-related" placeholder="02_地理/01_世界地图与总览, 03_历史与年表/01_大年表" />
+          <input type="text" id="annotate-related" placeholder="世界地图与总览, 大年表" />
         </div>
       </div>
       <div class="annotate-panel-footer">
@@ -215,7 +215,7 @@ export function initChangesSystem(): void {
       <div class="changes-empty">暂无变更记录</div>
     </div>
     <div class="changes-panel-footer">
-      <button class="btn btn-secondary btn-sm" id="changes-import-btn">导入 JSON</button>
+      <button class="btn btn-secondary btn-sm" id="changes-import-btn">导入存档</button>
       <button class="btn btn-secondary btn-sm" id="changes-clear">清空</button>
       <button class="btn btn-primary btn-sm" id="changes-download-all">批量下载 (0 条)</button>
       <input type="file" id="changes-import-input" accept="application/json" multiple style="display:none;" />
@@ -307,26 +307,28 @@ export function initChangesSystem(): void {
     if (!changesImportInput?.files || !changesImportInput.files.length) return
     let imported = 0
     let skipped = 0
-    const existingIds = new Set(changes.map(c => c.id))
+    const existingKeys = new Set(changes.map(c => c.author + '::' + c.id))
     for (const file of Array.from(changesImportInput.files)) {
       try {
-        const notes = await importChangeNotesFromFile(file)
+        const { notes, source: bundleSource } = await importChangeNotesFromFile(file)
         for (const note of notes) {
-          if (note.id && existingIds.has(note.id)) {
+          // dedupKey 必须与下面 push 时实际存储的 author 一致，否则旧存档重导会漏掉去重
+          const effectiveAuthor = note.author || bundleSource || (isAnonUpgraded() ? '匿名的人' : '匿名旅人')
+          const dedupKey = effectiveAuthor + '::' + (note.id || '')
+          if (dedupKey && existingKeys.has(dedupKey)) {
             skipped++
             continue
           }
-          // 导入的记录若缺少字段则补默认值（importChangeNotesFromFile 已 ensureTargetKey）
-          // 保留原始 author（不覆盖为 bundle.source）—— 不同贡献者的标注在面板里用颜色区分
           changes.push({
             id: note.id || generateId(),
             type: note.type || 'annotation',
-            author: note.author || (isAnonUpgraded() ? '匿名的人' : '匿名旅人'),
+            author: effectiveAuthor,
             timestamp: note.timestamp || new Date().toISOString(),
             target: note.target || { docPath: '' },
             content: note.content || { summary: '(无标题)', body: '', tags: [] },
             status: note.status || 'pending',
             targetKey: note.targetKey || '',
+            contentFingerprint: note.contentFingerprint || undefined,
           })
           imported++
         }
@@ -759,6 +761,7 @@ export function scanAndRenderBadges(container: HTMLElement, docPath: string): vo
     const hasChangedContent = matched.some(n => n.contentFingerprint && n.contentFingerprint !== currentFp)
     if (hasChangedContent) {
       badge.classList.add('annotate-badge-changed')
+      badge.title = `${matched.length} 条变更记录（内容已变更）：点击查看`
     }
 
     // 点击角标 → 打开气泡（再次点击关闭）
@@ -1004,7 +1007,7 @@ function updateChangesList(): void {
 
   if (visible.length === 0) {
     changesList.innerHTML = changes.length === 0
-      ? `<div class="changes-empty">暂无变更记录<br/><span style="font-size:11px; opacity:.6;">在文档上点 <strong>+</strong> 添加备注；或从 JSON 导入。</span></div>`
+      ? `<div class="changes-empty">暂无变更记录<br/><span style="font-size:11px; opacity:.6;">在文档上点 <strong>+</strong> 添加备注；或从存档导入。</span></div>`
       : `<div class="changes-empty">没有匹配的记录（共 ${changes.length} 条）</div>`
     return
   }
@@ -1014,25 +1017,29 @@ function updateChangesList(): void {
       <div class="change-item-header">
         <span class="change-badge change-badge-${c.type}">${typeLabels[c.type] || c.type}</span>
         <span class="author-chip ${authorColorClass(c.author)}" title="作者：${esc(c.author)}">${esc(c.author)}</span>
-        <span class="change-id">${c.id}</span>
-        <div style="margin-left:auto; display:flex; gap:4px;">
+        <div class="change-item-actions">
           <button class="change-action" data-act="expand" title="展开/缩合">&#9660;</button>
           <button class="change-action" data-act="edit" title="编辑">&#9998;</button>
           <button class="change-action" data-act="locate" title="定位到相关段落" style="font-weight:700;">&#8631;</button>
           <button class="change-action" data-act="download" title="下载该条">&#8595;</button>
-          <button class="change-action" data-act="status" title="点击切换状态">${statusLabels[c.status] || c.status}</button>
+          <button class="change-action change-action-status" data-act="status" title="点击切换状态">${statusLabels[c.status] || c.status}</button>
           <button class="change-action" data-act="delete" title="删除">&times;</button>
         </div>
       </div>
-      <div class="change-item-title">${esc(c.content.summary)}</div>
-      <div class="change-item-meta">${esc(c.target.docPath)}${c.target.breadcrumb ? ' · ' + esc(c.target.breadcrumb) : ''}${c.target.elementIndex ? ' · ' + esc(c.target.elementIndex) : ''}</div>
-      ${c.content.priority ? `<span class="change-priority change-priority-${c.content.priority}">${priorityLabels[c.content.priority]}</span>` : ''}
+      <div class="change-item-title-row">
+        <span class="change-item-title">${esc(c.content.summary)}</span>
+        <span class="change-item-title-sep">—</span>
+        <span class="change-item-meta">${esc(c.target.docPath)}${c.target.breadcrumb ? ' · ' + esc(c.target.breadcrumb) : ''}${c.target.elementIndex ? ' · ' + esc(c.target.elementIndex) : ''}</span>
+      </div>
+      <div class="change-item-footer">
+        ${c.content.priority ? `<span class="change-priority change-priority-${c.content.priority}">${priorityLabels[c.content.priority]}</span>` : ''}
+        <span class="change-item-time">${formatTime(c.timestamp)}</span>
+      </div>
       <div class="change-item-collapsible">
         ${c.content.body ? `<div class="change-item-body">${marked.parse(c.content.body)}</div>` : ''}
         ${c.content.tags && c.content.tags.length ? `<div class="change-item-tags">${c.content.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         ${c.content.reference ? `<div class="change-item-ref">参考：${esc(c.content.reference)}</div>` : ''}
         ${c.content.relatedDocs && c.content.relatedDocs.length ? `<div class="change-item-related">关联：${c.content.relatedDocs.map(d => esc(d)).join(' · ')}</div>` : ''}
-        <div class="change-item-time">${formatTime(c.timestamp)}</div>
       </div>
     </div>
   `).join('')

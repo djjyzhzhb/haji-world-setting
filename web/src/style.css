@@ -1067,15 +1067,8 @@ body {
     font-size: 16px;
   }
 
-  .change-item-header {
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-
   .change-action {
-    font-size: 14px;
-    min-width: 36px;
-    min-height: 36px;
+    font-size: 13px;
   }
 }
 
@@ -1164,6 +1157,14 @@ body {
 .welcome-body b {
   color: #ebe5f5;
   font-weight: 600;
+}
+
+.welcome-plus {
+  color: #fff;
+  background: #7c5cbf;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: 700;
 }
 
 .welcome-disclaimer {
@@ -1263,7 +1264,7 @@ body {
   background: var(--accent);
   color: #fff;
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 34px;
   text-align: center;
   cursor: pointer;
@@ -1272,6 +1273,7 @@ body {
   transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 100;
   box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  text-shadow: 0 0 6px rgba(255,255,255,0.35);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -1546,17 +1548,31 @@ body {
 .change-item-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.change-item-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.change-item-header .author-chip {
+  max-width: 120px;
+  word-break: break-all;
+  line-height: 1.3;
 }
 
 .change-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 4px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+  line-height: 1.4;
 }
 
 .change-badge-annotation {
@@ -1577,12 +1593,6 @@ body {
 .change-badge-idea {
   background: #d5f5e0;
   color: #1a6b3a;
-}
-
-.change-id {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-family: var(--mono);
 }
 
 .change-download {
@@ -1607,11 +1617,27 @@ body {
   border-color: var(--accent);
 }
 
+.change-item-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
 .change-item-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-heading);
-  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.change-item-title-sep {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  opacity: 0.3;
+  font-size: 11px;
 }
 
 .change-item-meta {
@@ -1621,6 +1647,8 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 40%;
 }
 
 .change-item-tags {
@@ -1732,9 +1760,15 @@ body {
 }
 
 .change-item-time {
-  margin-top: 6px;
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+.change-item-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 /* ============================================
@@ -1784,7 +1818,6 @@ body {
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  margin: 4px 0;
 }
 
 .change-priority-low      { background: #e8e8e8; color: #555; }
@@ -1810,11 +1843,11 @@ body {
 
 .change-action {
   background: none;
-  border: 1px solid var(--border);
+  border: 1px solid #cdc7d5;
   color: var(--text-secondary);
   font-size: 12px;
-  padding: 3px 7px;
-  border-radius: 3px;
+  padding: 10px 5px;
+  border-radius: 4px;
   cursor: pointer;
   line-height: 1;
   font-family: inherit;
@@ -2261,16 +2294,17 @@ body {
    ============================================================ */
 .author-chip {
   display: inline-block;
-  padding: 2px 10px;
+  padding: 6px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
   color: #fff;
-  line-height: 1.6;
+  line-height: 1.4;
   letter-spacing: 0.3px;
   user-select: none;
   -webkit-user-select: none;
   vertical-align: middle;
+  text-align: center;
 }
 
 /* 8 种不同颜色：根据 author 名字的 hash 值选择 */

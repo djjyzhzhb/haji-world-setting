@@ -40,6 +40,7 @@ export interface ChangeNote {
 export interface ChangeNoteBundle {
   version: 1
   exportedAt: string
+  source: string       // 导出者名字，用于多来源存档识别
   count: number
   notes: ChangeNote[]
 }
@@ -95,7 +96,8 @@ export function ensureTargetKey(note: ChangeNote): ChangeNote {
  *   1) 精确匹配 targetKey（首选）
  *   2) tag + 文本包含（双向）
  *   3) 同 docPath 且 note.elementIndex 与当前元素序号一致（文本变了但位置没变的场景）
- *   4) section（标题）兜底：仅对 h2/h3 生效
+ *   4) breadcrumb 层级路径匹配
+ *   5) section（标题）兜底：仅对 h2/h3 生效
  *
  * 返回匹配分数（0 表示不匹配），便于在多个候选里挑最佳。
  */
@@ -124,7 +126,16 @@ export function scoreMatch(note: ChangeNote, docPath: string, element: HTMLEleme
     if (note.target.elementIndex === currentIndex) return 50
   }
 
-  // 4) section（标题）兜底：仅对 h2/h3 生效
+  // 4) breadcrumb 匹配（同一层级路径内的段落）
+  if (note.target.breadcrumb) {
+    const container = element.closest('.content-body, .home-content') as HTMLElement | null
+    if (container) {
+      const currentBc = computeBreadcrumb(container, element)
+      if (note.target.breadcrumb === currentBc) return 40
+    }
+  }
+
+  // 5) section（标题）兜底：仅对 h2/h3 生效
   if ((tag === 'h2' || tag === 'h3') && note.target.section) {
     if (elementText === note.target.section) return 80
   }
@@ -187,12 +198,12 @@ export function downloadChangeNote(change: ChangeNote): void {
 export function downloadAllChanges(changes: ChangeNote[], exportedBy?: string): void {
   if (!changes || changes.length === 0) return
   const safeNotes = changes.map(ensureTargetKey)
-  const bundle: ChangeNoteBundle & { exportedBy?: string } = {
+  const bundle: ChangeNoteBundle = {
     version: 1,
     exportedAt: new Date().toISOString(),
+    source: exportedBy || '匿名',
     count: safeNotes.length,
     notes: safeNotes,
-    exportedBy: exportedBy || undefined,
   }
   const json = JSON.stringify(bundle, null, 2)
   const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')
@@ -200,22 +211,22 @@ export function downloadAllChanges(changes: ChangeNote[], exportedBy?: string): 
 }
 
 /** 通过用户选择文件导入一批变更记录（支持 bundle 或旧的单条 JSON） */
-export function importChangeNotesFromFile(file: File): Promise<ChangeNote[]> {
+export function importChangeNotesFromFile(file: File): Promise<{ notes: ChangeNote[]; source?: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onerror = () => reject(new Error('读取文件失败'))
     reader.onload = () => {
       try {
         const raw = JSON.parse(String(reader.result || '{}'))
+        const bundleSource = (raw as any)?.source || (raw as any)?.exportedBy
         const notes: ChangeNote[] = raw?.notes
           ? (raw as ChangeNoteBundle).notes
           : isSingleNote(raw)
             ? [raw as ChangeNote]
             : []
-        // 给每条记录确保有 targetKey
-        resolve(notes.filter(Boolean).map(ensureTargetKey))
+        resolve({ notes: notes.filter(Boolean).map(ensureTargetKey), source: bundleSource || undefined })
       } catch (e) {
-        reject(new Error('JSON 解析失败 —— 文件格式不合法'))
+        reject(new Error('文件解析失败 —— 文件格式不合法'))
       }
     }
     reader.readAsText(file)
