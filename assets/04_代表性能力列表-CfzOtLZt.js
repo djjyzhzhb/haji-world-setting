@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-084
+title: "体系A代表性能力列表"
+category: "power_system"
+tags: ["力量体系A"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 体系A — 代表性能力列表
+
+> 待填充。
+`;export{e as default};

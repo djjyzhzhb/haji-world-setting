@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-102
+title: "叙事时间线"
+category: "narrative"
+tags: ["叙事", "时间线"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 叙事时间线
+
+> 待填充：故事内部的时间安排。
+`;export{e as default};

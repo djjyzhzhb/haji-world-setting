@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-021
+title: "气候带与生态区"
+category: "geography"
+tags: ["气候", "生态"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 气候带与生态区
+
+> 待填充：气候系统、生物群系分布。
+`;export{e as default};

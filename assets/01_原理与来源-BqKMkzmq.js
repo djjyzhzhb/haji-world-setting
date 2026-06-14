@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-081
+title: "体系A原理与来源"
+category: "power_system"
+tags: ["力量体系A"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 体系A — 原理与来源
+
+> 待填充：力量的物质/哲学基础。
+`;export{e as default};

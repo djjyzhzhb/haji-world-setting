@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-124
+title: "参考资料"
+category: "appendix"
+tags: ["参考"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 参考资料
+
+> 待填充：外部参考书目、网站。
+`;export{e as default};

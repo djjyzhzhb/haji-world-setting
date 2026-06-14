@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-020
+title: "世界地图与总览"
+category: "geography"
+tags: ["地图", "地理", "AI关键"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 世界地图与总览
+
+> [AI关键] 待填充：全局地理概览。
+`;export{e as default};

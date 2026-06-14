@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-012
+title: "根本法则"
+category: "world_core"
+tags: ["法则", "铁律", "AI关键"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 根本法则
+
+> [AI关键] 待填充：世界运行的底层铁律。物理规律、魔法规则、因果律的总纲。
+`;export{e as default};

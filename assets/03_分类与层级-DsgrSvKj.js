@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-083
+title: "体系A分类与层级"
+category: "power_system"
+tags: ["力量体系A"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 体系A — 分类与层级
+
+> 待填充。
+`;export{e as default};

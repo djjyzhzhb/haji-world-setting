@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-046
+title: "普通生物图鉴"
+category: "creatures"
+tags: ["生物"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 普通生物图鉴
+
+> 待填充。
+`;export{e as default};

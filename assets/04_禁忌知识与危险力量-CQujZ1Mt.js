@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-085
+title: "禁忌知识与危险力量"
+category: "power_system"
+tags: ["禁忌", "危险"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 禁忌知识与危险力量
+
+> 待填充：被禁止/失控的力量。
+`;export{e as default};

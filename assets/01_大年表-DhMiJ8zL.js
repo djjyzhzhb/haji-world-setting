@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-030
+title: "大年表"
+category: "history"
+tags: ["年表", "时间线", "AI关键"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 大年表
+
+> [AI关键] 待填充：完整时间线总表。
+`;export{e as default};
