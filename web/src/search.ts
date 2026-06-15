@@ -27,7 +27,7 @@ function findDocPath(importPath: string): string {
  */
 export async function buildIndex(
   docs: Map<string, { path: string; title: string; content: string }>,
-  allMdImports: Record<string, () => Promise<string>>
+  allMdImports: Record<string, () => Promise<unknown>>
 ): Promise<void> {
   if (fuse) return // 已构建
 
@@ -115,6 +115,8 @@ function stripMarkdown(md: string): string {
     .replace(/\n{2,}/g, '\n')
     .trim()
 }
+
+export { stripMarkdown }
 
 function extractSnippet(
   body: string,

@@ -1,0 +1,29 @@
+# Rime user dictionary
+#@/db_name	luna_pinyin
+#@/db_type	userdb
+#@/rime_version	1.13.1
+#@/tick	27
+#@/user_id	16990d4b-e773-4c78-ab38-41c557a8bbb6
+ba 	吧	c=1 d=0.99005 t=27
+biao dan 	表單	c=1 d=0.891366 t=27
+de 	的	c=1 d=0.918512 t=27
+dian dao 	顛倒	c=1 d=0.965605 t=27
+dui bi 	對比	c=1 d=1 t=27
+huan chu 	喚出	c=2 d=1.78724 t=27
+jing guo 	經過	c=1 d=0.995012 t=27
+le 	了	c=2 d=2.00406 t=27
+mei you 	沒有	c=1 d=0.904837 t=27
+ming bai 	明白	c=1 d=0.937067 t=27
+qian hou 	前後	c=1 d=0.955997 t=27
+shi 	是	c=1 d=0.985112 t=27
+shi 	時	c=1 d=0.895834 t=27
+shi bu shi 	是不是	c=1 d=0.946485 t=27
+shu ru fa 	輸入法	c=1 d=0.913931 t=27
+shun xu 	順序	c=2 d=1.94099 t=27
+wei shen me 	爲什麼	c=1 d=0.878095 t=27
+wo 	我	c=2 d=1.81024 t=27
+wo de 	我的	c=2 d=1.8606 t=27
+wo ming bai 	我明白	c=0 d=0.0918512 t=27
+wo ming bai le 	我明白了	c=1 d=0.923116 t=27
+zheng que 	正確	c=1 d=0.97531 t=27
+zhong yu 	終於	c=1 d=0.932394 t=27

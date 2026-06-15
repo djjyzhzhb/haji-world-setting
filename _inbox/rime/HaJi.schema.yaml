@@ -1,0 +1,80 @@
+# encoding: utf-8
+
+schema:
+  schema_id: HaJi
+  name: 哈吉文输入法
+  version: "1.0"
+  author: 抹抹
+  description: |
+    哈吉文自定义输入法，支持私有字符（E000-E5FF）输入。
+    参考 Rime 标准方案结构设计。
+  dependencies: []  # 若有依赖的码表（如笔画），可添加在此
+
+switches:
+  - name: ascii_mode
+    reset: 0
+    states: [ 中文, 西文 ]
+
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher  # 新增：匹配规则（如候选词高亮）
+    - abc_segmentor  # 新增：字母输入分段
+    - punct_segmentor  # 新增：标点分段
+    - fallback_segmentor
+  translators:
+    - punct_translator  # 新增：标点翻译器
+    - table_translator  # 主翻译器（对应你的码表）
+    # 若需要反向查找（如通过笔画查字符），可添加（需关联笔画码表）
+    # - reverse_lookup_translator
+  filters:
+    - uniquifier  # 新增：去重候选词（避免重复）
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcba
+  delimiter: " '"
+  max_code_length: 4
+  algebra:
+    - derive/^zh$/zh/
+    - derive/^ch$/ch/
+    - derive/^sh$/sh/
+    - derive/^ng$/ng/
+    # 新增：保留首字母大写（如 Ko → ko）
+    - derive/^([A-Z][a-z]+)$/\L$1/
+    - derive/^([A-Z]+)$/\L$1/
+    
+
+translator:
+  name: table_translator
+  dictionary: HaJi  # 对应码表文件名（HaJi.dict.yaml）
+  enable_charset_filter: false  # 关闭字符集过滤（允许私有字符）
+  enable_sentence: true
+  initial_quality: 1
+  preedit_format: 
+    - "xform/v/ü/"  # 新增：全局将v替换为ü显示（如输入lv→lü，xv→xü等）v→ü
+    - "xform/ai/ä/"  # 新增：将ai替换为ä显示（如输入bai→bä，mai→mä等）ai→ä
+    - "xform/ei/ë/"  # 新增：将ei替换为ë显示（如输入bei→bë，mei→më等）ei→ë
+    - "xform/ng/ŋ/"  # 新增：将ng替换为ŋ显示（如输入ngo→ŋo，ngi→ŋi等）ng→ŋ
+
+punctuator:
+  import_preset: symbols  # 继承Rime默认标点映射
+
+key_binder:
+  import_preset: default  # 继承默认按键绑定
+
+recognizer:
+  import_preset: default
+  patterns:
+    punct: '^/([0-9]0?|[A-Za-z]+)$'  # 支持通过/触发标点
+
+__include: HaJi.custom:/patch  # 保留用户自定义补丁

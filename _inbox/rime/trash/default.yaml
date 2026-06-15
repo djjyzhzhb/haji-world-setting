@@ -1,0 +1,3 @@
+style:
+  font_face: "Haji"  # 必须与字体实际名称完全一致（区分大小写）
+  font_point: 14      # 可选，调整字体大小

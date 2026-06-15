@@ -1,0 +1,51 @@
+⚠ 此文件在 ima 中为图片（JPG），API 只返回了 OCR 识别文字，原始图片无法通过接口下载。
+需从 ima 客户端手动下载原图。
+
+--- OCR 识别内容 ---
+
+Sing zu yacesudi (哈吉语 Always in my heart)
+
+sing zu yacesudi - 铭记于心
+
+ala kaisicesi sunanangnia
+如果这一切都是命运
+su qin zula yiki yausing
+那么我更该用我的一生继续走下去
+sula ngeyiqadi cicigiciging
+即便所有行进的道路上遍布荆棘
+ta sucekisi qashetais jakisi jakaisi
+但我依然相信困难过后依然有美好与希望
+sula yeceünayüne
+即便我不知道生命的意义
+ta yace shana qajenenia
+但我知道什么最宝贵
+suyixi qanaki suyiqadi
+这条路指引我深陷爱中
+yesheli neneng ,ladai sushakitais
+不畏惧任何事物，才能够寻得自我
+yeher samiki ünayüne
+生命的意义不在于对比
+ta her qajeyki üjaäumi
+所以我珍惜光明与宁静
+suyixi naduki ya cumicumin
+星光指引我来到你身旁
+wayi qashetais
+穿过长夜
+jay ngeyiqadi jajang
+我看见前路遍布光芒
+yece ünadi zulayine
+我不知道生命中什么才是应该做的
+ta yace sus naki sha nia
+但我知晓我此刻的爱在哪里
+ala kaisicesi sunanangnia
+如果这一切早是命中注定
+su qin zula yiki yausing
+那么我更应该走好我的一生
+sula ngeyiqadi cicigicing
+即便前路遍布荆棘
+dace  ù aingmiy jana sing  zu yacesudi
+上天恩赐的美好我会永远铭记于心
+dace  ÷ aingmiy jana sing  zu yacesudi
+上天恩赐的美好我会永远铭记于心
+
+注:ai:[s] ei:[e]

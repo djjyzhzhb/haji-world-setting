@@ -116,6 +116,9 @@ for (const [importPath, importer] of Object.entries(allMdImports)) {
 
 // --- App state ---
 let currentDoc: DocEntry | null = null
+let settingsOpen = false
+let previousDoc: DocEntry | null = null
+let pendingHighlightQuery: string | null = null // 搜索命中后，在文档中高亮的关键词
 const docs: Map<string, DocEntry> = new Map()
 
 /** 阅读位置记忆：记录每个文档上次的 scrollTop */
@@ -432,6 +435,9 @@ function renderNavTree(items: NavItem[], container: HTMLElement, filter: string 
 
 // --- Load document ---
 async function loadDocument(path: string) {
+  // 离开设置页（从导航栏点击时）
+  settingsOpen = false
+
   // 切换文档时立即隐藏「+」按钮，防止残留在旧文档位置
   hideAnnotateBtn()
 
@@ -444,7 +450,7 @@ async function loadDocument(path: string) {
   if (docs.has(path)) {
     const doc = docs.get(path)!
     currentDoc = doc
-    renderContent(doc)
+    await renderContent(doc)
     updateActiveStates(path)
     // 恢复阅读位置
     const savedPos = scrollPositions.get(path)
@@ -513,7 +519,7 @@ async function loadDocument(path: string) {
     docs.set(path, doc)
     buildRefsBy()
     currentDoc = doc
-    renderContent(doc)
+    await renderContent(doc)
     updateActiveStates(path)
   } catch (err) {
     contentArea.innerHTML = `<div class="content-error">
@@ -524,8 +530,32 @@ async function loadDocument(path: string) {
   }
 }
 
-function renderContent(doc: DocEntry) {
-  const html = (marked.parse(doc.content) as string).replace(/<img /g, '<img loading="lazy" ')
+function replaceRubyMarkers(html: string): string | Promise<string> {
+  // 两个标记都没出现 → 直接返回，避免无谓的 async 包装
+  const hasShort = /\{\{ruby:/.test(html);
+  const hasLong = /\(\(\(\(/.test(html);
+  if (!hasShort && !hasLong) return html;
+
+  // `((((...))))` 四括号 → 整句/段落级混写（中文 + 哈吉语混排）
+  // 内部换行、标点都保留，只有拉丁字母会被当作哈吉语做注音
+  return import('./ruby').then(({ buildTermRuby, buildSentenceRuby }) => {
+    let out = html;
+    if (hasLong) {
+      // 用非贪婪的 `((((` 到 `))))` 配对，保留内部空白
+      out = out.replace(/\(\(\(\(([\s\S]*?)\)\)\)\)/g, (_, inner) =>
+        `<span class="haji-sentence">${buildSentenceRuby(inner)}</span>`
+      );
+    }
+    if (hasShort) {
+      out = out.replace(/\{\{ruby:([^}]+)\}\}/g, (_, term) => buildTermRuby(term));
+    }
+    return out;
+  });
+}
+
+async function renderContent(doc: DocEntry) {
+  let html = (marked.parse(doc.content) as string).replace(/<img /g, '<img loading="lazy" ');
+  html = await replaceRubyMarkers(html);
 
   if (doc.path === 'home.md') {
     contentArea.innerHTML = `<div class="home-content">${html}</div>`
@@ -545,6 +575,13 @@ function renderContent(doc: DocEntry) {
   `
   scanAndRenderBadges(contentArea, doc.path)
   expandAndHighlightNav(doc.path)
+
+  // 搜索命中高亮：如果是从搜索结果跳转过来，给第一个命中处加脉冲提示
+  if (pendingHighlightQuery) {
+    const q = pendingHighlightQuery
+    pendingHighlightQuery = null
+    requestAnimationFrame(() => highlightSearchHit(contentArea, q))
+  }
 }
 
 // 关联文档点击委托（绑定在 contentArea 上）
@@ -633,6 +670,7 @@ function chapterColorForPath(path: string): string {
   const chNum = parts[0].match(/^(\d{2})_/)?.[1]
   return chNum && chapterColors[chNum] ? chapterColors[chNum] : chapterColors['00']
 }
+void chapterColorForPath // 保留以备因果链图等视觉渲染使用
 
 /** 渲染 front matter 信息条 */
 function renderDocMeta(doc: DocEntry): string {
@@ -908,6 +946,7 @@ searchInput.addEventListener('keydown', (e) => {
     if (selectIdx >= 0 && selectIdx < items.length) {
       const path = items[selectIdx].dataset.path
       if (path) {
+        pendingHighlightQuery = searchInput.value.trim()
         hideSearchResults()
         loadDocument(path)
       }
@@ -967,6 +1006,7 @@ async function doFullTextSearch(query: string) {
     el.addEventListener('click', () => {
       const path = (el as HTMLElement).dataset.path
       if (path) {
+        pendingHighlightQuery = searchInput.value.trim() // 记下当前关键词，给 renderContent 用
         hideSearchResults()
         loadDocument(path)
       }
@@ -997,6 +1037,48 @@ function highlightMatch(text: string, query: string): string {
   const escapedQ = escapeHtml(query)
   const regex = new RegExp(`(${escapedQ.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})`, 'gi')
   return escaped.replace(regex, '<mark>$1</mark>')
+}
+
+/**
+ * 在当前文档中，为搜索关键词的第一个命中处添加脉冲高亮（类似变更记录的视觉反馈）
+ * 1. 找到包含关键词的最深层块级元素（p / li / td / div.content-body 等）
+ * 2. 平滑滚动到它的可视区
+ * 3. 加 CSS 动画脉冲高亮
+ */
+function highlightSearchHit(root: HTMLElement, query: string): void {
+  if (!query) return
+  const norm = query.toLowerCase()
+
+  // 候选容器：正文段落中包含关键词的元素
+  const selectors = 'p, li, h1, h2, h3, h4, h5, h6, td, th, blockquote, div.content-body > *'
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>(selectors))
+
+  let hit: HTMLElement | null = null
+  for (const el of candidates) {
+    // 忽略嵌套：如果子元素也在候选里，优先匹配更内层的元素
+    const text = el.textContent || ''
+    if (text.toLowerCase().includes(norm)) {
+      const hasInnerMatch = Array.from(el.querySelectorAll<HTMLElement>(selectors)).some((child) => {
+        return (child.textContent || '').toLowerCase().includes(norm)
+      })
+      if (!hasInnerMatch) {
+        hit = el
+        break
+      }
+    }
+  }
+
+  // 回退：找不到段落级元素，就把整个内容区作为高亮容器
+  if (!hit) {
+    const fallback = root.querySelector<HTMLElement>('div.content-body, div.home-content')
+    if (fallback) hit = fallback
+  }
+
+  if (!hit) return
+
+  hit.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  hit.classList.add('search-hit-highlight')
+  window.setTimeout(() => hit?.classList.remove('search-hit-highlight'), 2800)
 }
 
 // --- 跨文档定位：当变更面板「定位」按钮按下且目标文档不在当前显示时，自动切换文档
@@ -1394,20 +1476,175 @@ if (!localStorage.getItem('identity-asked')) {
   })
 }
 
-// 右上角帮助按钮：切换弹窗
-const helpBtn = document.createElement('button')
-helpBtn.className = 'help-btn'
-helpBtn.innerHTML = '?'
-helpBtn.setAttribute('aria-label', '功能说明')
-helpBtn.title = '功能说明'
-document.body.appendChild(helpBtn)
-helpBtn.addEventListener('click', () => {
-  const existing = document.querySelector('.welcome-overlay')
-  if (existing) {
-    existing.classList.add('fade-out')
-    setTimeout(() => existing.remove(), 300)
-  } else {
-    showWelcomeDialog()
-  }
-})
+// ============================================================
+// 右上角工具栏：一个切换按钮 + 展开后的多个功能按钮
+// 新工具 → toolsCatalog 数组里加一行
+// ============================================================
+function initToolIndex(): void {
+  const wrap = document.createElement('div')
+  wrap.className = 'tool-bar-wrap'
 
+  // 切换按钮
+  const toggle = document.createElement('button')
+  toggle.className = 'tool-bar-toggle'
+  toggle.innerHTML = '◈'
+  toggle.setAttribute('aria-label', '工具栏')
+  toggle.title = '工具栏'
+
+  // 按钮列表（从上到下：功能说明 → 哈吉文工具 → 设置）
+  const buttons = [
+    {
+      id: 'help',
+      icon: '?',
+      name: '功能说明',
+      action: () => {
+        const existing = document.querySelector('.welcome-overlay')
+        if (existing) {
+          existing.classList.add('fade-out')
+          setTimeout(() => existing.remove(), 300)
+        } else {
+          showWelcomeDialog()
+        }
+      }
+    },
+    {
+      id: 'ruby',
+      icon: '\uE4CB', // HaJi 字体 PUA 字符 → 哈吉文工具
+      name: '哈吉文工具',
+      action: () => window.open('/ruby-demo.html', '_blank')
+    },
+    {
+      id: 'settings',
+      icon: '⚙',
+      name: '设置',
+      action: () => loadSettingsPage()
+    }
+  ]
+
+  const panel = document.createElement('div')
+  panel.className = 'tool-bar-panel'
+
+  buttons.forEach(b => {
+    const btn = document.createElement('button')
+    btn.className = 'tool-bar-btn tool-bar-btn-' + b.id
+    btn.innerHTML = b.icon
+    btn.setAttribute('aria-label', b.name)
+    btn.title = b.name
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      b.action()
+    })
+    panel.appendChild(btn)
+  })
+
+  wrap.appendChild(toggle)
+  wrap.appendChild(panel)
+  document.body.appendChild(wrap)
+
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation()
+    const open = panel.classList.toggle('open')
+    toggle.classList.toggle('open', open)
+  })
+
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target as Node)) {
+      panel.classList.remove('open')
+      toggle.classList.remove('open')
+    }
+  })
+}
+initToolIndex()
+
+// 设置页面：在主内容区渲染（类似 home 的独立页面）
+function loadSettingsPage(): void {
+  if (settingsOpen) {
+    if (previousDoc) {
+      loadDocument(previousDoc.path)
+    }
+    settingsOpen = false
+    return
+  }
+
+  if (currentDoc) {
+    scrollPositions.set(currentDoc.path, contentArea.scrollTop)
+    previousDoc = currentDoc
+  }
+
+  document.querySelectorAll('.nav-link.active').forEach(el => el.classList.remove('active'))
+  document.querySelectorAll('.nav-section-header.active').forEach(el => el.classList.remove('active'))
+
+  currentDoc = null
+  settingsOpen = true
+  contentArea.scrollTop = 0
+
+  const html = `
+<div class="settings-page">
+  <h1 class="content-title">设置</h1>
+  <p class="settings-page-subtitle">世界观阅读器的外观与行为</p>
+
+  <section class="settings-page-section">
+    <h2 class="settings-page-section-title">显示</h2>
+    <div class="settings-page-row">
+      <div class="settings-page-main">
+        <label>
+          <input type="checkbox" id="setting-lazy-images" checked>
+          <span>图片懒加载</span>
+        </label>
+      </div>
+      <div class="settings-page-hint">减少页面初次加载的数据量</div>
+    </div>
+  </section>
+
+  <section class="settings-page-section">
+    <h2 class="settings-page-section-title">搜索</h2>
+    <div class="settings-page-row">
+      <div class="settings-page-main">
+        <label>
+          <input type="checkbox" id="setting-fuzzy-search" checked>
+          <span>模糊搜索（Fuse.js）</span>
+        </label>
+      </div>
+      <div class="settings-page-hint">启用后支持拼写相近的匹配，关闭时退化为精确子串匹配</div>
+    </div>
+  </section>
+
+  <section class="settings-page-section">
+    <h2 class="settings-page-section-title">字体</h2>
+    <div class="settings-page-row">
+      <div class="settings-page-main"><strong>哈吉文字体</strong></div>
+      <div class="settings-page-hint" id="haji-font-status">检测中...</div>
+    </div>
+  </section>
+
+  <section class="settings-page-section">
+    <h2 class="settings-page-section-title">关于</h2>
+    <div class="settings-page-row">
+      <div class="settings-page-main"><strong>哈吉语创制计划 · 世界观阅读器</strong></div>
+      <div class="settings-page-hint">静态网站 · 无外部依赖 · 所有文档本地加载</div>
+    </div>
+  </section>
+</div>
+`
+  contentArea.innerHTML = html
+
+  // 哈吉文字体检测（简化版：HajiWen 在 @font-face 中已定义）
+  const probe = document.createElement('span')
+  probe.style.fontFamily = 'HajiWen, monospace'
+  probe.style.fontSize = '72px'
+  probe.style.visibility = 'hidden'
+  probe.style.position = 'absolute'
+  probe.textContent = '\uE000'
+  document.body.appendChild(probe)
+
+  setTimeout(() => {
+    const fontEl = document.getElementById('haji-font-status')
+    if (fontEl) {
+      fontEl.textContent = '已加载'
+    }
+    probe.remove()
+  }, 150)
+}
+
+
+// ============================================================

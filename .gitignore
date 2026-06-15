@@ -12,8 +12,17 @@ desktop.ini
 # Node modules (web/)
 web/node_modules/
 
-# 构建产物
+# 构建产物 + Vite 缓存
 web/dist/
+.vite/
+
+# AI 工具工作目录（本地缓存 / AI 工具缓存不提交，仅保留 projects 中的 skill 配置
+.trae/documents/
+.trae/specs/
+.workbuddy/
+
+# 保留自定义 Skill（项目级规则）
+!.trae/skills/
 
 # 素材投递箱（未整理的原素材不提交，整理后归入正式目录的再提交）
 _inbox/图片/*

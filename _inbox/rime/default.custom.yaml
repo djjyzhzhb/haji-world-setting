@@ -1,0 +1,19 @@
+customization:
+  distribution_code_name: trime
+  distribution_version: "v3.3.5-0-gb129b653"
+  generator: "Rime::SwitcherSettings"
+  modified_time: "Wed Sep 17 09:33:06 2025"
+  rime_version: 1.13.1
+debug:
+  enable: true
+  trace_segmentor: true
+  trace_speller: true
+  trace_translator: true
+patch:
+  "debug/log_level": verbose
+  log_dir: logs
+  schema_list:
+    - {schema: HaJi}
+style:
+  font_face: "HaJi.ttf"
+  font_point: 14

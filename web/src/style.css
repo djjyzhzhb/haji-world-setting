@@ -280,6 +280,7 @@ body {
 
 /* 独立箭头按钮：仅控制展开/缩合，不影响文本点击 */
 .nav-arrow-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -297,6 +298,14 @@ body {
   transition: transform 0.2s ease, color 0.2s;
   font-family: inherit;
   outline: none;
+}
+
+/* 透明伪元素：扩大箭头按钮的点击命中区，视觉上不改变 UI */
+.nav-arrow-btn::before {
+  content: '';
+  position: absolute;
+  inset: -8px -12px -8px -12px;
+  background: transparent;
 }
 
 .nav-section:not(.collapsed) > .nav-section-header .nav-arrow-btn {
@@ -475,6 +484,60 @@ body {
 .home-content em {
   font-style: normal;
   color: var(--text-secondary);
+}
+
+/* 设置页面 —— 风格与文档正文统一 */
+.settings-page {
+  max-width: 720px;
+}
+.settings-page-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 36px 0;
+}
+.settings-page-section {
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.settings-page-section:last-child {
+  border-bottom: none;
+}
+.settings-page-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c5cbf;
+  letter-spacing: 0.04em;
+  margin: 0 0 14px 0;
+}
+.settings-page-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 0;
+}
+.settings-page-main {
+  flex: 1;
+  color: var(--text-color);
+  font-size: 14px;
+}
+.settings-page-main label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.settings-page-main input[type="checkbox"] {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.settings-page-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
 .content-placeholder h2 {
@@ -1588,33 +1651,103 @@ body {
   cursor: pointer;
 }
 
-/* 右上角帮助按钮 */
-.help-btn {
+/* ============================================================
+   右上角工具栏
+   结构：.tool-bar-wrap > [.tool-bar-toggle, .tool-bar-panel > .tool-bar-btn × N]
+   ============================================================ */
+.tool-bar-wrap {
   position: fixed;
-  top: 12px;
+  top: 16px;
   right: 16px;
-  width: 36px;
-  height: 36px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 切换按钮 — 最顶端，与其他按钮同尺寸同风格 */
+.tool-bar-toggle {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: var(--sidebar-bg);
-  border: none;
-  color: #ebe5f5;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
+  border: 1px solid rgba(218, 198, 255, 0.5);
+  background: #1e1b2e;
+  color: #d0b8ff;
+  font-size: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(156, 125, 219, 0.3);
+  transition: transform 0.18s, box-shadow 0.18s, color 0.18s, border-color 0.18s;
+  line-height: 1;
+  padding: 1px 0 0 0;
+}
+.tool-bar-toggle:hover {
+  transform: scale(1.08);
+  color: #f0e6ff;
+  border-color: rgba(218, 198, 255, 0.8);
+  box-shadow: 0 4px 16px rgba(156, 125, 219, 0.5);
+}
+.tool-bar-toggle.open {
+  color: #ffffff;
+  border-color: rgba(218, 198, 255, 0.8);
+  transform: rotate(45deg);
+  box-shadow: 0 2px 10px rgba(218, 198, 255, 0.3);
 }
 
-.help-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+/* 展开面板 — 默认收起（完全不可见） */
+.tool-bar-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-height: 0;
+  overflow: visible;
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+  transition: max-height 0.25s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+.tool-bar-panel.open {
+  max-height: 200px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
+/* 面板内的每个功能按钮 */
+.tool-bar-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #1e1b2e;
+  color: #d8d0ea;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1;
+  padding: 1px 0 0 0;
+}
+
+/* 哈吉文工具按钮 — 使用 HaJi 字体渲染 PUA 字符图标（与其他按钮同字号） */
+.tool-bar-btn.tool-bar-btn-ruby {
+  font-family: 'HaJi', system-ui, sans-serif;
+}
+.tool-bar-btn:hover {
+  transform: scale(1.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* 特殊按钮颜色 — 设置（已移除，统一为浅色） */
 /* ============================================
    Annotate Button
    - 位置：通过 JS 动态计算（文本左侧）
@@ -2462,6 +2595,21 @@ body {
 }
 
 /* ============================================
+   Search Hit Highlight
+   - 参考变更记录高亮：为搜索命中处提供脉冲高亮反馈
+   ============================================ */
+.search-hit-highlight {
+  animation: search-hit-pulse 2.8s ease-out;
+  border-radius: 6px;
+}
+
+@keyframes search-hit-pulse {
+  0%   { background: rgba(156, 125, 219, 0.35); box-shadow: 0 0 0 2px rgba(156, 125, 219, 0.8), 0 0 16px rgba(156, 125, 219, 0.4); }
+  25%  { background: rgba(156, 125, 219, 0.30); box-shadow: 0 0 0 2px rgba(156, 125, 219, 0.6), 0 0 16px rgba(156, 125, 219, 0.3); }
+  100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ============================================
    Nav Item Highlight (当从变更记录定位时)
    ============================================ */
 .nav-pulse {
@@ -2698,7 +2846,7 @@ body {
 @media print {
   .sidebar,
   .hamburger-btn,
-  .help-btn,
+  .tool-bar-wrap,
   .changes-panel,
   .changes-toggle,
   .annotate-btn,
@@ -2759,4 +2907,58 @@ body {
   .content-title {
     border-bottom-color: #ccc;
   }
+}
+/* ===== 哈吉文 Ruby 标注（主页内嵌） ===== */
+@font-face {
+  font-family: 'HaJi';
+  src: url('/哈吉文.woff2') format('woff2');
+  unicode-range: U+E000-E6FF;
+  font-display: swap;
+}
+
+/* 主页内专有名词 ruby 注音 */
+ruby.haji-term rt {
+  font-family: 'HaJi', serif;
+  font-size: 0.58em;
+  color: #5c4a2e;
+  letter-spacing: 0.06em;
+}
+ruby.haji-term {
+  letter-spacing: 0.06em;
+}
+
+/* 整句/段落级哈吉文混写容器 — 让 ruby 注音在正文段落里不被挤压 */
+.haji-sentence {
+  display: inline; /* 不改变行文流，可被 p / li / td 等直接包裹 */
+  line-height: 1.8; /* 上方留足空间放 PUA 字符注音 */
+}
+.haji-sentence ruby.haji-term {
+  margin-right: 0.08em; /* 两个 ruby 词之间轻微错开，避免注音粘连 */
+}
+.haji-sentence ruby.haji-term rt {
+  font-family: 'HaJi', serif;
+  font-size: 0.52em;
+  letter-spacing: 0.08em;
+  color: #5c4a2e;
+  margin-top: 2px;
+}
+
+/* 功能说明弹窗里的代码示例 */
+.welcome-code {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 2px 0;
+  background: #f3e8d0;
+  color: #3a2f1e;
+  border: 1px solid #d9c49a;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', 'Cascadia Mono', monospace;
+  font-size: 0.9em;
+  letter-spacing: 0.02em;
+}
+.welcome-code-comment {
+  display: block;
+  margin: 4px 0 4px 24px;
+  color: var(--text-secondary);
+  font-size: 0.88em;
 }

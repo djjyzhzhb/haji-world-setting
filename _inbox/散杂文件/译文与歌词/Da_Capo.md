@@ -1,0 +1,47 @@
+# Da Capo（哈吉语 从头反复，意大利文音乐术语）
+
+## Da Capo - 从头反复
+
+pinelatais kaisijanai
+当曾经的挚友离去
+
+qüsha jaceli ladai qace naünan
+你是否期待着他们能将你的姓名铭记
+
+gakinela jaritaisi
+当美好的旧日远去
+
+su qü kaisiney naücesu sa
+那么你的心是否还是和从前一样
+
+yechi yeyiqi sing yain nia
+我们无法停止时间
+
+su taidisiqipu sumi
+所以只得将足迹留在身后
+
+puli kaidi qin er qar li
+毕竟前方的道路更为漫长啊
+
+taisi zu nenexi koyir tina
+曾有一位娓娓道来的讲故事的人
+
+gasufi yisichi üjaücuuxin
+以手描绘着阳光与雨露
+
+ta taisi fa üqa yaüna
+而你我最终也总要长大
+
+yaüsingfi cesufiyiki ügakin üsubeilin
+用我的一生去体会爱与伤痛
+
+ala garkoy jarsitai
+如果难以说再见
+
+su kur cuyiki qichi ükoiy yainhu
+那么就让我们真诚地试着唱首歌吧
+
+ünanangdin jana na nia singr cumine
+你就是世间的美好，永远如星辰般闪耀
+
+注：ai /ɛ/  ei /e/

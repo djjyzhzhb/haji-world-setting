@@ -1,0 +1,14 @@
+# Rime user dictionary
+#@/db_name	HaJi
+#@/db_type	userdb
+#@/rime_version	1.13.1
+#@/tick	11
+#@/user_id	cc10f754-727f-4ac8-8245-446e1f28e199
+a 		c=1 d=0.985112 t=11
+fu 		c=1 d=0.995012 t=11
+ha 		c=1 d=0.995012 t=11
+ji 		c=1 d=1 t=11
+le 		c=1 d=1 t=11
+shu 		c=1 d=0.99005 t=11
+xi 		c=1 d=0.980199 t=11
+zhe 		c=1 d=0.97531 t=11

@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>哈吉文 Ruby 注音演示</title>
+<style>
+
+/* ===== 字体加载 ===== */
+@font-face {
+  font-family: 'HaJi';
+  src: url('哈吉文.woff2') format('woff2');
+  unicode-range: U+E000-E5FF;
+  font-display: swap;
+}
+
+/* ===== 基础样式 ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'HaJi', 'Noto Serif CJK SC', 'Source Han Serif SC', 'SimSun', serif;
+  background: #faf8f4;
+  color: #2c2416;
+  line-height: 1.8;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 6rem;
+}
+
+h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.05em;
+}
+h1 .sub { font-size: 0.5em; font-weight: 400; color: #8b7355; margin-left: 0.5em; }
+h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid #e0d5c1;
+}
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.6rem;
+  color: #5c4a2e;
+}
+
+p { margin: 0.6rem 0; }
+
+code {
+  background: #f0ebe0;
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-size: 0.92em;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+pre {
+  background: #2c2416;
+  color: #f0ebe0;
+  padding: 1rem 1.3rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  margin: 0.8rem 0;
+}
+
+/* ===== Ruby 注音核心样式 ===== */
+ruby {
+  ruby-align: center;
+}
+rt {
+  font-family: 'HaJi', serif;
+  font-size: 0.42em;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #6b5a3e;
+}
+
+/* 示例卡片 */
+.card {
+  background: #fff;
+  border: 1px solid #e8e0d0;
+  border-radius: 10px;
+  padding: 1.8rem 2rem;
+  margin: 1.2rem 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.example-name {
+  font-size: 2.2rem;
+  font-weight: 500;
+  text-align: center;
+  letter-spacing: 0.12em;
+  margin: 0.5rem 0;
+  line-height: 2;
+}
+
+.example-name ruby { margin: 0 0.15em; }
+
+.example-label {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #8b7355;
+  margin-top: 0.4rem;
+}
+
+.example-colon {
+  font-size: 1.4rem;
+  color: #c0b090;
+  margin: 0 0.3em;
+}
+
+/* 表格 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8rem 0 1.5rem;
+  font-size: 0.92rem;
+}
+th, td {
+  border: 1px solid #e0d5c1;
+  padding: 0.45rem 0.7rem;
+  text-align: center;
+}
+th {
+  background: #f5f0e6;
+  font-weight: 600;
+  color: #5c4a2e;
+}
+td.code {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.82rem;
+  color: #8b7355;
+}
+td.haji {
+  font-family: 'HaJi', serif;
+  font-size: 1.6rem;
+  line-height: 1;
+  padding: 0.1rem 0.3rem;
+}
+
+/* 互动区 */
+.interactive {
+  background: #fff;
+  border: 1px solid #e8e0d0;
+  border-radius: 10px;
+  padding: 1.5rem 2rem;
+  margin: 1.2rem 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.interactive label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #5c4a2e;
+}
+
+.interactive input {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  font-size: 1rem;
+  border: 1px solid #d0c4b0;
+  border-radius: 6px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.interactive input:focus {
+  border-color: #8b7355;
+}
+
+.output-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+.output-box {
+  flex: 1;
+  background: #faf8f4;
+  border: 1px solid #e8e0d0;
+  border-radius: 8px;
+  padding: 1rem 1.3rem;
+}
+.output-box .title {
+  font-size: 0.8rem;
+  color: #8b7355;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.output-box .ruby-result {
+  font-size: 1.9rem;
+  line-height: 2;
+  min-height: 3rem;
+}
+.output-box .raw-result {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.78rem;
+  color: #5c4a2e;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+.hint {
+  font-size: 0.82rem;
+  color: #8b7355;
+  margin-top: 0.6rem;
+}
+
+/* ===== 选字面板 ===== */
+.char-picker {
+  position: absolute;
+  z-index: 100;
+  background: #fff;
+  border: 2px solid #5c4a2e;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+  padding: 0.8rem 1rem;
+  min-width: 220px;
+  max-width: 320px;
+  font-size: 0.85rem;
+  animation: pickerIn 0.18s ease;
+}
+@keyframes pickerIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+.char-picker .cp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #e8e0d0;
+}
+.cp-header .cp-syl {
+  font-weight: 700;
+  color: #5c4a2e;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+}
+.cp-header .cp-close {
+  cursor: pointer;
+  color: #8b7355;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.3rem;
+  transition: color 0.15s;
+}
+.cp-header .cp-close:hover { color: #2c2416; }
+
+.cp-section {
+  margin: 0.5rem 0;
+}
+.cp-section-title {
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: #8b7355;
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.cp-chars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.cp-char {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid #d0c4b0;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  background: #fdfcfa;
+  color: #2c2416;
+  transition: all 0.12s;
+  user-select: none;
+}
+.cp-char:hover {
+  background: #5c4a2e;
+  color: #fff;
+  border-color: #5c4a2e;
+  transform: scale(1.12);
+}
+.cp-char.active {
+  background: #5c4a2e;
+  color: #fff;
+  border-color: #5c4a2e;
+}
+.cp-char.cp-c {
+  background: #f0ebe0;
+  border-style: dashed;
+}
+.cp-char.cp-c.active {
+  background: #8b7355;
+  color: #fff;
+  border-color: #8b7355;
+}
+
+/* ruby 可点击提示 */
+.ruby-clickable {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.ruby-clickable:hover { color: #8b7355; }
+
+/* 整词标注：哈吉文间距 */
+.ruby-whole rt {
+  letter-spacing: 0.15em;
+}
+
+/* 全体 Ruby 汉字间距 */
+ruby {
+  letter-spacing: 0.12em;
+}
+
+/* 整词标注：汉字间距略紧，补回词间间隙 */
+.ruby-whole {
+  letter-spacing: 0.04em;
+  margin-right: 0.08em;
+}
+
+/* 选字重置按钮 */
+.ruby-reset-row {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: #8b7355;
+}
+.ruby-reset-row button {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid #c0b090;
+  border-radius: 4px;
+  background: #fff;
+  color: #8b7355;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  transition: all 0.15s;
+}
+.ruby-reset-row button:hover {
+  background: #8b7355;
+  color: #fff;
+  border-color: #8b7355;
+}
+
+/* ===== 字库面板 ===== */
+.pool-panel {
+  margin: 2rem 0;
+}
+.pool-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #5c4a2e;
+  background: #faf8f4;
+  border: 1px solid #d0c4b0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  user-select: none;
+}
+.pool-toggle:hover { background: #5c4a2e; color: #fff; border-color: #5c4a2e; }
+.pool-toggle .arrow { transition: transform 0.2s; font-size: 0.75rem; }
+.pool-toggle.open .arrow { transform: rotate(90deg); }
+
+.pool-body { display: none; margin-top: 1rem; }
+.pool-body.open { display: block; }
+
+/* 容器标签栏 */
+.pool-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.8rem;
+}
+.pool-tab {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  font-family: 'JetBrains Mono','Consolas',monospace;
+  border: 1px solid #e0d5c1;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #fff;
+  color: #5c4a2e;
+  transition: all 0.12s;
+  user-select: none;
+}
+.pool-tab:hover { background: #f0ebe0; }
+.pool-tab.active { background: #5c4a2e; color: #fff; border-color: #5c4a2e; }
+
+/* 元音列头 */
+.pool-grid {
+  display: grid;
+  grid-template-columns: 4rem repeat(8, 1fr);
+  gap: 1px;
+  background: #e0d5c1;
+  border: 1px solid #e0d5c1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pool-hd {
+  background: #f5f0e6;
+  padding: 0.3rem 0.2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #8b7355;
+  font-family: 'JetBrains Mono','Consolas',monospace;
+}
+.pool-cell {
+  background: #fff;
+  padding: 0.35rem 0.25rem;
+  text-align: center;
+  min-height: 2.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+}
+.pool-cell .cur {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #2c2416;
+  line-height: 1.3;
+}
+.pool-cell .opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.12rem;
+  justify-content: center;
+}
+.pool-cell .opt {
+  font-size: 0.65rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+.opt-a { background: #f0ebe0; color: #5c4a2e; border: 1px solid #e0d5c1; }
+.opt-b { background: #f5f0ff; color: #5c4a8e; border: 1px solid #d5caf0; }
+.opt-c { background: #fff0f0; color: #8b3a3a; border: 1px dashed #e0b0b0; }
+.opt-a:hover { background: #5c4a2e; color: #fff; }
+.opt-b:hover { background: #7c6aaa; color: #fff; }
+.opt-c:hover { background: #c05050; color: #fff; }
+.opt.used { border-width: 2px; font-weight: 700; }
+
+/* 独立行 */
+.pool-sep {
+  grid-column: 1 / -1;
+  background: #faf8f4;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  color: #8b7355;
+  font-weight: 600;
+}
+
+/* ===== Footnotes ===== */
+.footnote {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0d5c1;
+  font-size: 0.82rem;
+  color: #8b7355;
+}
+
+</style>
+</head>
+<body>
+
+<h1>哈吉文 · Ruby 注音<span class="sub">Haji Ruby Annotation</span></h1>
+
+<p>
+  哈吉文通过 <code>&lt;ruby&gt;</code> 元素标注在汉字上方，类似日文振假名。
+  用户无需安装任何字体或输入法——字体文件随网页自动加载。
+</p>
+
+<!-- ===== 示例: 人名 ===== -->
+<h2>一、人名示例</h2>
+
+<div class="card">
+  <div class="example-label">女性名 · 姓 + 名 + 称</div>
+  <div class="example-name">
+    <ruby>猫<rt>&#xE326;</rt></ruby><ruby>古<rt>&#xE22C;</rt></ruby>
+    <span class="example-colon">·</span>
+    <ruby>娜<rt>&#xE3A8;</rt></ruby><ruby>笑<rt>&#xE2A8;</rt></ruby><ruby>米<rt>&#xE327;</rt></ruby>
+    <span class="example-colon">·</span>
+    <ruby>桥<rt>&#xE548;</rt></ruby><ruby>可<rt>&#xE200;</rt></ruby>
+  </div>
+  <div class="example-label">
+    逐字对应：<code>mo→猫 gu→古 na→娜 xo→笑 mi→米 qo→桥 ko→可</code></div>
+</div>
+
+<div class="card">
+  <div class="example-label">语言名 · 仅标注固有词部分</div>
+  <div class="example-name">
+    <ruby>哈<rt>&#xE300;</rt></ruby><ruby>吉<rt>&#xE44D;</rt></ruby>语
+  </div>
+  <div class="example-label">
+    <code>hajiko</code> 中「语」为中文意译，仅固有词 <code>haji</code>（哈吉）整体注音
+  </div>
+</div>
+
+<div class="card">
+  <div class="example-label">地名 · 仅标注原文部分</div>
+  <div class="example-name">
+    <ruby>启<rt>&#xE549;</rt></ruby><ruby>音<rt>&#xE200;</rt></ruby>大陆
+  </div>
+  <div class="example-label">
+    <code>qiko</code>（启音）是固有词，整体注音；「大陆」为中文意译，不标注
+  </div>
+</div>
+
+<!-- ===== 二、使用方法 ===== -->
+<h2>二、完整字形总览</h2>
+
+<p>哈吉文由「容器 + 果实」拼合而成，22 个容器 × 8 个果实 = 176 个 CV 组合字形。另有独立果实（元音）、独立容器（辅音）和独立封盖（韵尾）。</p>
+
+<h3>独立果实（元音）— 共 8 个</h3>
+<table>
+  <tr><th>o</th><th>i</th><th>u</th><th>e</th><th>ei</th><th>a</th><th>v (ü)</th><th>ai</th></tr>
+  <tr>
+    <td class="haji" title="o → U+E000">&#xE000;</td>
+    <td class="haji" title="i → U+E001">&#xE001;</td>
+    <td class="haji" title="u → U+E002">&#xE002;</td>
+    <td class="haji" title="e → U+E003">&#xE003;</td>
+    <td class="haji" title="ei → U+E004">&#xE004;</td>
+    <td class="haji" title="a → U+E005">&#xE005;</td>
+    <td class="haji" title="v → U+E006">&#xE006;</td>
+    <td class="haji" title="ai → U+E007">&#xE007;</td>
+  </tr>
+</table>
+<p class="hint">ai 仅作为独立果实存在，不参与容器拼合（CV 表中无 ai 列）。</p>
+
+<h3>独立容器（辅音）</h3>
+<table>
+  <tr><th>k</th><th>g</th><th>t</th><th>d</th><th>x</th><th>s</th><th>h</th><th>m</th><th>p</th><th>b</th><th>n</th></tr>
+  <tr>
+    <td class="haji" title="k → U+E030">&#xE030;</td>
+    <td class="haji" title="g → U+E031">&#xE031;</td>
+    <td class="haji" title="t → U+E032">&#xE032;</td>
+    <td class="haji" title="d → U+E033">&#xE033;</td>
+    <td class="haji" title="x → U+E034">&#xE034;</td>
+    <td class="haji" title="s → U+E035">&#xE035;</td>
+    <td class="haji" title="h → U+E036">&#xE036;</td>
+    <td class="haji" title="m → U+E037">&#xE037;</td>
+    <td class="haji" title="p → U+E038">&#xE038;</td>
+    <td class="haji" title="b → U+E039">&#xE039;</td>
+    <td class="haji" title="n → U+E03A">&#xE03A;</td>
+  </tr>
+</table>
+<table>
+  <tr><th>r</th><th>l</th><th>f</th><th>j</th><th>z</th><th>c</th><th>zh</th><th>ch</th><th>sh</th><th>q</th><th>ng</th></tr>
+  <tr>
+    <td class="haji" title="r → U+E03B">&#xE03B;</td>
+    <td class="haji" title="l → U+E03C">&#xE03C;</td>
+    <td class="haji" title="f → U+E03D">&#xE03D;</td>
+    <td class="haji" title="j → U+E03E">&#xE03E;</td>
+    <td class="haji" title="z → U+E03F">&#xE03F;</td>
+    <td class="haji" title="c → U+E040">&#xE040;</td>
+    <td class="haji" title="zh → U+E041">&#xE041;</td>
+    <td class="haji" title="ch → U+E042">&#xE042;</td>
+    <td class="haji" title="sh → U+E043">&#xE043;</td>
+    <td class="haji" title="q → U+E044">&#xE044;</td>
+    <td class="haji" title="ng → U+E045">&#xE045;</td>
+  </tr>
+</table>
+
+<h3>独立封盖（韵尾 / 单辅音后缀）</h3>
+<table>
+  <tr><th>s</th><th>r</th><th>n</th><th>ng</th><th>y</th></tr>
+  <tr>
+    <td class="haji" title="s → U+E600 (源自 si)">&#xE600;</td>
+    <td class="haji" title="r → U+E601 (源自 ri)">&#xE601;</td>
+    <td class="haji" title="n → U+E602 (源自 ng)">&#xE602;</td>
+    <td class="haji" title="ng → U+E603 (源自 nge)">&#xE603;</td>
+    <td class="haji" title="y → U+E604 (源自 yi)">&#xE604;</td>
+  </tr>
+</table>
+
+<h3>容器 + 果实（22×8 = 176 CV 组合）</h3>
+
+<div id="syllable-table"></div>
+
+<!-- ===== 三、HTML 标记方法 ===== -->
+<h2>三、HTML 标记方法</h2>
+
+<pre>&lt;ruby&gt;猫&lt;rt&gt;&#x26;#xE326;&lt;/rt&gt;&lt;/ruby&gt;&lt;ruby&gt;古&lt;rt&gt;&#x26;#xE22C;&lt;/rt&gt;&lt;/ruby&gt;</pre>
+
+<p>翻译字与哈吉音节一一对应时，逐字标注最整齐。若不对齐（如三音节译成两字），则用一个 <code>&lt;ruby&gt;</code> 包裹整个词：<code>&lt;ruby&gt;猫古&lt;rt&gt;音节串&lt;/rt&gt;&lt;/ruby&gt;</code></p>
+
+<p>配合 CSS 全局生效：</p>
+
+<pre>@font-face {
+  font-family: 'HaJi';
+  src: url('哈吉文.woff2') format('woff2');
+  unicode-range: U+E000-E5FF;  /* 只影响 PUA 区 */
+}
+
+rt { font-family: 'HaJi', serif; }</pre>
+
+<p><code>unicode-range</code> 让字体只作用于哈吉文码点段，不影响页面其他文字。</p>
+
+<!-- ===== 四、在 md 文档中直接使用 ===== -->
+<h2>四、在设定文档里直接写哈吉文</h2>
+
+<p>打开项目里任意 <code>.md</code> 文档后，你可以用下面三种标记嵌入哈吉文，无需跳转到此工具页。<br>
+渲染由主页的 <code>replaceRubyMarkers</code> 逻辑处理，打开文档时自动生效。</p>
+
+<h3>1. 整句/段落级混写 <code>(((( ... ))))</code></h3>
+<div class="card">
+  <p><b>写法</b>：用四对括号包裹一段文字，<b>只有里面的拉丁字母会被当作哈吉语</b>做 ruby 注音，中文、标点、空格全部原样保留。</p>
+  <pre><code>((((哈吉语中，"qoko" 意为 "山"，而 "naxomi" 意为 "城"。人们说 "mogu naxomi" 即 "山下之城"。))))</code></pre>
+  <p>适合：整段文字、翻译对照、故事场景。</p>
+</div>
+
+<h3>2. 逐词逐音节 <code>{{ruby: mogu naxomi qoko}}</code></h3>
+<div class="card">
+  <p><b>写法</b>：在文档正文的任意位置，用 <code>{{ruby: 空格分隔的词汇}}</code> 短标记。</p>
+  <pre><code>这座城的哈吉语名字是 {{ruby: mogu naxomi qoko}}。</code></pre>
+  <p>适合：专有名词、短句、术语解释。</p>
+</div>
+
+<h3>3. 整词一个 ruby <code>{{ruby: &lt;naxomi&gt;}}</code></h3>
+<div class="card">
+  <p><b>写法</b>：在短标记里用 <code>&lt;</code> / <code>&gt;</code> 把词包起来，整个词共享一个 ruby 容器（多个音节排成一行）。</p>
+  <pre><code>这座城的名字是 {{ruby: &lt;naxomi&gt;}}。</code></pre>
+  <p>适合：人名、地名、专有称谓（例如"纳索米"作为整体呈现，而不是拆成三个汉字）。</p>
+</div>
+
+<p class="hint">提示：以上三种标记可以在同一文档中混用；如果你只是想试一下音节拆分、或想把一整段哈吉语翻译转成 ruby 文本，继续往下看 ↓</p>
+
+<!-- ===== 五、试试看 ===== -->
+<h2>五、互动：拉丁 → Ruby</h2>
+
+<div class="interactive">
+  <label for="latin-input">输入拉丁转写（正常连写 = 逐字对应；<code>&lt;...&gt;</code> = 整词标注）</label>
+  <input id="latin-input" type="text"
+         placeholder="例如：hajiko 或 &lt;hajiko&gt;"
+         value="mogu naxomi qoko">
+  <div class="output-row">
+    <div class="output-box">
+      <div class="title">Ruby 渲染</div>
+      <div class="ruby-result" id="ruby-output"></div>
+    </div>
+    <div class="output-box">
+      <div class="title">原始 HTML <button id="btn-copy-html" style="margin-left:0.6rem;padding:0.15rem 0.5rem;font-size:0.72rem;border:1px solid #c0b090;border-radius:4px;background:#fff;color:#5c4a2e;cursor:pointer;font-family:inherit;">复制</button></div>
+      <div class="raw-result" id="html-output"></div>
+    </div>
+  </div>
+  <div class="hint">正常写 <code>hajiko</code> → 逐字标注：哈/吉/可。<br>用 <code>&lt;hajiko&gt;</code> → 整词标注：哈吉可（哈吉文间加间距，仍可逐字点选）。空格仅分隔。<br><strong>💡 点击 ruby 注音中的汉字可打开选字面板，从 A/B/C 池中挑选字。</strong></div>
+  <div class="ruby-reset-row">
+    <span>已修改 <span id="choice-count">0</span> 处选字</span>
+    <button id="btn-undo" title="撤回 (Ctrl+Z)">↩ 撤回</button>
+    <button id="btn-redo" title="重做 (Ctrl+Y)">↪ 重做</button>
+    <button id="btn-reset-choices" title="清除全部自定义">重置全部</button>
+  </div>
+</div>
+
+<!-- ===== 五、字库面板 ===== -->
+<div class="pool-panel">
+  <button class="pool-toggle" id="pool-toggle"><span class="arrow">▶</span> 字库面板 · A/B/C 选字池</button>
+  <div class="pool-body" id="pool-body">
+    <div class="pool-tabs" id="pool-tabs"></div>
+    <div class="pool-grid" id="pool-grid"></div>
+  </div>
+</div>
+
+<p class="footnote">
+  · 哈吉文字体（hajiko）覆盖 Unicode PUA 区 U+E000–U+E6FF，共 528 字形。<br>
+  · WOFF2 体积 11.3 KB，对网页加载几乎无影响。<br>
+  · v 与 iu 共用码点（如 kv = kiu = E205），ou/ao 为 o 的别名。<br>
+  · 独立封盖（韵尾）: s r n ng y（E600–E604）。
+</p>
+
+<!-- ===== JavaScript ===== -->
+<script>
+// ============================
+// Layer 1 — 数据层
+// ============================
+
+// 8 个果实
+const VOWELS = ['o','i','u','e','a','v','ei','ai'];
+const V_OFFSET = { o:0, i:1, u:2, e:3, a:4, v:5, ei:6, ai:7 };
+// 22 个容器（W/Y 仅作键盘别名，不做字形）
+const CONTAINERS = [
+  { latin:'k',  base:0xE200 }, { latin:'g',  base:0xE22A },
+  { latin:'t',  base:0xE254 }, { latin:'d',  base:0xE27E },
+  { latin:'x',  base:0xE2A8 }, { latin:'s',  base:0xE2D2 },
+  { latin:'h',  base:0xE2FC }, { latin:'m',  base:0xE326 },
+  { latin:'p',  base:0xE350 }, { latin:'b',  base:0xE37A },
+  { latin:'n',  base:0xE3A4 }, { latin:'r',  base:0xE3CE },
+  { latin:'l',  base:0xE3F8 }, { latin:'f',  base:0xE422 },
+  { latin:'j',  base:0xE44C }, { latin:'z',  base:0xE476 },
+  { latin:'c',  base:0xE4A0 }, { latin:'zh', base:0xE4CA },
+  { latin:'ch', base:0xE4F4 }, { latin:'sh', base:0xE51E },
+  { latin:'q',  base:0xE548 }, { latin:'ng', base:0xE572 }
+];
+// 独立容器
+const CONSONANTS = { k:0xE030, g:0xE031, t:0xE032, d:0xE033,
+  x:0xE034, s:0xE035, h:0xE036, m:0xE037, p:0xE038, b:0xE039,
+  n:0xE03A, r:0xE03B, l:0xE03C, f:0xE03D, j:0xE03E, z:0xE03F,
+  c:0xE040, zh:0xE041, ch:0xE042, sh:0xE043, q:0xE044, ng:0xE045
+};
+// 独立封盖韵尾
+const FINALS = { '-s':0xE600, '-r':0xE601, '-n':0xE602, '-ng':0xE603, '-y':0xE604 };
+
+// 构建 拉丁 → PUA 映射表
+const syllableMap = {};
+CONTAINERS.forEach(c => { VOWELS.forEach(v => { syllableMap[c.latin + v] = c.base + V_OFFSET[v]; }); });
+Object.assign(syllableMap, { o:0xE000, i:0xE001, u:0xE002, e:0xE003, ei:0xE004, a:0xE005, v:0xE006, ai:0xE007 });
+Object.assign(syllableMap, { w:0xE002, y:0xE001, iu:0xE006, ou:0xE000, ao:0xE000 });
+Object.assign(syllableMap, CONSONANTS, FINALS);
+
+// A 池默认音译字
+const defaultA = {
+  ko:'可', ki:'基', ku:'库', ke:'克', ka:'卡', kv:'屈', kei:'凯', kai:'开',
+  go:'戈', gi:'吉', gu:'古', ge:'格', ga:'加', gv:'居', gei:'给', gai:'盖',
+  to:'托', ti:'提', tu:'图', te:'特', ta:'塔', tv:'蒂', tei:'泰', tai:'泰',
+  do:'多', di:'迪', du:'杜', de:'德', da:'达', dv:'杜', dei:'戴', dai:'戴',
+  xo:'肖', xi:'西', xu:'休', xe:'谢', xa:'夏', xv:'许', xei:'谢', xai:'夏',
+  so:'索', si:'斯', su:'苏', se:'塞', sa:'萨', sv:'叙', sei:'塞', sai:'塞',
+  ho:'霍', hi:'希', hu:'胡', he:'赫', ha:'哈', hv:'许', hei:'黑', hai:'海',
+  mo:'莫', mi:'米', mu:'穆', me:'梅', ma:'马', mv:'缪', mei:'梅', mai:'迈',
+  po:'波', pi:'皮', pu:'普', pe:'佩', pa:'帕', pv:'皮', pei:'佩', pai:'派',
+  bo:'博', bi:'比', bu:'布', be:'贝', ba:'巴', bv:'比', bei:'贝', bai:'拜',
+  no:'诺', ni:'尼', nu:'努', ne:'内', na:'那', nv:'纽', nei:'内', nai:'奈',
+  ro:'若', ri:'里', ru:'鲁', re:'热', ra:'拉', rv:'吕', rei:'雷', rai:'莱',
+  lo:'洛', li:'利', lu:'卢', le:'勒', la:'拉', lv:'吕', lei:'莱', lai:'莱',
+  fo:'福', fi:'菲', fu:'弗', fe:'费', fa:'法', fv:'菲', fei:'费', fai:'法',
+  jo:'乔', ji:'吉', ju:'朱', je:'杰', ja:'贾', jv:'居', jei:'杰', jai:'贾',
+  zo:'佐', zi:'齐', zu:'祖', ze:'泽', za:'扎', zv:'齐', zei:'泽', zai:'宰',
+  co:'措', ci:'齐', cu:'楚', ce:'策', ca:'察', cv:'曲', cei:'采', cai:'采',
+  zho:'卓', zhi:'之', zhu:'朱', zhe:'哲', zha:'扎', zhv:'朱', zhei:'哲', zhai:'翟',
+  cho:'乔', chi:'奇', chu:'楚', che:'车', cha:'查', chv:'曲', chei:'柴', chai:'柴',
+  sho:'肖', shi:'什', shu:'舒', she:'舍', sha:'沙', shv:'许', shei:'谢', shai:'沙',
+  qo:'桥', qi:'奇', qu:'丘', qe:'切', qa:'恰', qv:'曲', qei:'切', qai:'恰',
+  ngo:'翁', ngi:'尼', ngu:'努', nge:'恩', nga:'昂', ngv:'尼', ngei:'内', ngai:'奈',
+  o:'奥', i:'伊', u:'乌', e:'厄', a:'阿', v:'于', ai:'艾', ei:'埃'
+};
+
+// ============================
+// Layer 1b — A/B/C 选字池
+// ============================
+
+// 注：表格中 ü → 代码中 v；w/y 系列暂不独立（无对应容器字形）
+const charPool = {
+  A: {
+    ko:['科','可','柯','克'], ki:['基','奇','其','琪'], ku:['库','酷','苦'], ke:['克','刻','可'], ka:['卡','喀'], kai:['开','凯','楷'], kei:['凯','楷'], kv:['曲','屈','区'],
+    go:['戈','歌','哥'], gi:['吉','基','及'], gu:['古','谷','故'], ge:['格','戈','各'], ga:['加','盖','该'], gai:['盖','该','改'], gei:['给'], gv:['居','巨','具'],
+    to:['托','拓','脱'], ti:['提','体','替'], tu:['图','突','涂'], te:['特','忒'], ta:['塔','他','它'], tai:['太','泰','态'], tei:['泰','太'], tv:['图','涂','途'],
+    do:['多','朵','铎'], di:['迪','第','地'], du:['杜','笃','读'], de:['德','得'], da:['达','大','答'], dai:['代','待','戴'], dei:['代','黛'], dv:['杜','都','度'],
+    xo:['索','梭','所'], xi:['西','希','锡'], xu:['许','徐','须'], xe:['谢','协','写'], xa:['沙','夏','侠'], xai:['谢','谐','懈'], xei:['西','希','锡'], xv:['许','虚','徐'],
+    so:['索','梭','所'], si:['斯','司','丝'], su:['苏','素','速'], se:['塞','色','涩'], sa:['萨','撒'], sai:['赛','塞','腮'], sei:['塞','色'], sv:['苏','胥'],
+    ho:['霍','和','火'], hi:['希','喜'], hu:['胡','呼','虎'], he:['赫','和','何','合'], ha:['哈'], hai:['海','亥'], hei:['黑','嘿'], hv:['许','虚'],
+    mo:['莫','摩','默'], mi:['米','密','弥'], mu:['穆','木','姆'], me:['么','墨','默'], ma:['马','玛','吗'], mai:['迈','麦','卖'], mei:['梅','美','玫'], mv:['穆','牧','目'],
+    po:['波','珀','坡'], pi:['皮','匹','批'], pu:['普','浦','葡'], pe:['珀','迫','魄'], pa:['帕','怕','爬'], pai:['派','湃','排'], pei:['佩','沛','配'], pv:['普','葡','浦'],
+    bo:['波','博','伯'], bi:['比','毕','必'], bu:['布','不','步'], be:['伯','帛','驳'], ba:['巴','芭','吧'], bai:['白','百','拜'], bei:['贝','北','杯'], bv:['布','比','毕'],
+    no:['诺','娜'], ni:['尼','妮'], nu:['努','奴'], ne:['内','纳'], na:['那','娜','纳'], nai:['奈','耐','奶'], nei:['内'], nv:['女'],
+    ro:['若','弱'], ri:['日'], ru:['如','儒','汝'], re:['尔','耳','而'], ra:['拉','喇','腊'], rai:['来','莱','赖'], rei:['瑞','蕊','锐'], rv:['如','汝','儒'],
+    lo:['洛','罗','骆'], li:['利','里','莉'], lu:['卢','路','鲁'], le:['勒','乐'], la:['拉','腊','喇'], lai:['来','莱','赖'], lei:['雷','蕾','泪'], lv:['吕','绿','律'],
+    fo:['佛'], fi:['菲','费','非'], fu:['夫','福','服'], fe:['菲','非','飞'], fa:['法','发','罚'], fai:['菲','斐'], fei:['菲','飞','非'], fv:['夫','孚'],
+    jo:['若','弱'], ji:['吉','基','及'], ju:['居','巨','具'], je:['杰','捷','洁'], ja:['扎','乍','加'], jai:['介','芥','界'], jei:['杰','捷'], jv:['居','巨','举'],
+    zo:['左','佐','做'], zi:['兹','子','资'], zu:['祖','足','组'], ze:['泽','则','择'], za:['扎','杂','匝'], zai:['在','载','再'], zei:['泽','则'], zv:['祖','组','阻'],
+    co:['措','错','撮'], ci:['次','此','刺'], cu:['粗','促','簇'], ce:['策','侧','册'], ca:['擦'], cai:['才','材','财'], cei:['翠','萃','粹'], cv:['取','趣','渠'],
+    zho:['卓','着'], zhi:['之','芝','知'], zhu:['朱','住','注'], zhe:['者','这','折'], zha:['扎','札','闸'], zhai:['斋','宅','翟'], zhei:['真','珍','贞'], zhv:['朱','主','竹'],
+    cho:['绰','辍'], chi:['赤','吃','驰'], chu:['楚','出','初'], che:['彻','车','扯'], cha:['查','察','茶'], chai:['柴','差','拆'], chei:['陈','辰','晨'], chv:['楚','处','出'],
+    sho:['硕','说','朔'], shi:['石','十','史'], shu:['书','舒','树'], she:['舍','奢','设'], sha:['沙','莎','啥'], shai:['晒','筛'], shei:['谁'], shv:['书','舒','殊'],
+    qo:['却','确','雀'], qi:['其','奇','琪'], qu:['区','曲','去'], qe:['且','切'], qa:['恰','洽'], qai:['千','迁','签'], qei:['青','清','晴'], qv:['却','确','雀'],
+    ngo:['俄','哦','娥'], ngi:['尼','宁','凝'], ngu:['乌','吴','吾'], nge:['嗯','能'], nga:['昂'], ngai:['艾','爱','哀'], ngei:['尼','宁','凝'], ngv:['于','语','玉'],
+    o:['奥'], i:['伊'], u:['乌'], e:['厄'], a:['阿'], v:['于'], ai:['艾'], ei:['埃']
+  },
+  B: {
+    ko:['歌','鸽','珂'], ki:['琦','祈','麒'], ku:['枯','窟'], ke:['客','恪'], ka:['咖'], kai:['恺','铠'], kv:['渠'],
+    go:['鸽','葛','舸'], gi:['玑','矶'], gu:['顾','鼓','崮'], ge:['葛','阁','舸'], gai:['垓'], gv:['琚'],
+    to:['驼','砣'], ti:['蹄','鹈'], tu:['兔','屠'], ta:['獭','沓'], tai:['岱','苔'], tv:['荼','菟'],
+    do:['舵'], di:['荻','笛'], du:['犊'], da:['搭'], dai:['黛','岱','玳'],
+    xo:['笑','啸','萧'], xi:['溪','汐','熙'], xu:['煦','墟','栩'], xe:['榭'], xa:['霞','暇','瑕'], xei:['曦','熹'], xv:['栩','煦','胥'],
+    so:['琐'], si:['思','寺'], su:['酥','溯'], se:['瑟'], sa:['飒'], sv:['谡','稣'],
+    ho:['鹤','荷','壑'], hi:['熹','汐'], hu:['瑚','浒'], he:['荷','河','鹤'], hai:['骸'], hv:['栩','煦'],
+    mo:['猫','漠','茉'], mi:['蜜','觅','幂'], mu:['暮','牧','慕'], me:['玫','梅'], ma:['码'], mai:['霾'], mei:['莓','媚','湄'], mv:['睦','沐'],
+    po:['泊','皤'], pi:['琵','霹'], pu:['蒲','瀑','圃'], pe:['佩'], pa:['琶','葩'], pai:['徘'], pei:['霈','辔'], pv:['蒲','璞'],
+    bo:['舶','帛'], bi:['璧','碧'], bu:['埠'], be:['柏','北'], ba:['疤','笆'], bai:['柏','伯'], bei:['蓓','碑'], bv:['璧'],
+    no:['糯'], ni:['霓','鲵'], nu:['弩'], ne:['讷'],
+    ra:['蜡'], rai:['籁'], rei:['芮'], rv:['茹'],
+    lo:['珞','萝'], li:['璃','骊','漓'], lu:['鹭','麓','芦'], le:['泐'], la:['剌'], lai:['籁'], lei:['磊','垒'], lv:['缕','闾'],
+    fi:['霏','翡'], fu:['芙','凫','釜'], fe:['绯','霏'], fa:['筏'], fai:['翡','霏'], fei:['绯','翡','霏'], fv:['芙','凫'],
+    ji:['霁','骥','矶'], ju:['琚','驹','橘'], je:['玦','碣'], ja:['迦','珈','笳'], jai:['玠'], jv:['琚','裾','榉'],
+    zo:['凿'], zi:['梓','紫'], zu:['卒','族'], ze:['仄'], za:['砸'],
+    co:['厝'], ci:['瓷','磁'], cu:['蔟'], cai:['采','彩'], cv:['璩'],
+    zho:['灼','濯'], zhi:['芷','枳','雉'], zhu:['珠','筑','竹'], zhe:['柘','鹧'], zhai:['寨'], zhei:['砧'], zhv:['珠','烛','筑'],
+    chi:['鸱','墀'], chu:['滁','雏','储'], che:['澈'], cha:['槎'], chai:['钗'], chei:['宸'], chv:['滁','雏'],
+    shi:['轼'], shu:['姝','漱'], she:['蛇','麝'], sha:['鲨','刹','纱'], shv:['姝','纾'],
+    qo:['鹊','桥'], qi:['琦','祺','麒'], qu:['渠','蕖'], qai:['阡','芊'], qei:['卿'],
+    ngo:['峨','鹅'], ngu:['悟','梧','鹜','坞'], ngai:['隘'], ngv:['瑀']
+  },
+  C: {
+    wu:'无', tu:'土', di:'地', de:'金', da:'石', xi:'水', si:'时', sa:'上', ba:'反', ja:'光', zhi:'火', she:'黑'
+  }
+};
+
+// 用户自定义选字映射
+const LS_KEY = 'haji_ruby_choices';
+
+function loadChoices() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveChoices() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(userChoices)); }
+  catch { /* 存储满了也不影响功能 */ }
+}
+
+const userChoices = loadChoices();
+
+// 历史栈（undo/redo）
+let choiceHistory = [{...userChoices}];  // 初始快照 = 页面加载时的状态
+let historyIdx = 0;
+
+function pushHistory() {
+  // 砍掉 redo 栈，追加新快照
+  choiceHistory = choiceHistory.slice(0, historyIdx + 1);
+  choiceHistory.push({...userChoices});
+  historyIdx = choiceHistory.length - 1;
+  if (choiceHistory.length > 50) { choiceHistory.shift(); historyIdx--; }
+  saveChoices();
+}
+
+function undo() {
+  if (historyIdx > 0) {
+    historyIdx--;
+    // 清空当前
+    for (const k of Object.keys(userChoices)) delete userChoices[k];
+    // 还原快照
+    Object.assign(userChoices, choiceHistory[historyIdx]);
+    closePicker();
+    updateRuby();
+  }
+}
+
+function redo() {
+  if (historyIdx < choiceHistory.length - 1) {
+    historyIdx++;
+    for (const k of Object.keys(userChoices)) delete userChoices[k];
+    Object.assign(userChoices, choiceHistory[historyIdx]);
+    closePicker();
+    updateRuby();
+  }
+}
+
+// 辅助：获取音节的实际汉字
+function getHan(syl) {
+  return userChoices[syl] || defaultA[syl] || syl;
+}
+
+function sylHasPool(syl) {
+  return charPool.A[syl] && charPool.A[syl].length > 0;
+}
+
+// ============================
+// Layer 2 — 转换层
+// ============================
+
+function toPua(s)  { const c = syllableMap[s]; return c !== undefined ? String.fromCodePoint(c) : s; }
+function toHex(s)  { const c = syllableMap[s]; return c !== undefined ? '&#' + c.toString(16) + ';' : s; }
+
+// 拉丁转写 → 音节序列
+function tokenize(word) {
+  const DBL = ['zh','ch','sh','ng'], VW = ['ai','ei','iu'], VS = 'oiueav';
+  const tokens = []; let i = 0;
+  while (i < word.length) {
+    let m;
+    for (const d of DBL) {
+      if (word.startsWith(d, i)) {
+        for (const v of VW) { if (word.startsWith(v, i + d.length)) { tokens.push(d + v); i += d.length + v.length; m = 1; break; } }
+        if (m) break;
+        if (VS.includes(word[i + d.length])) { tokens.push(d + word[i + d.length]); i += d.length + 1; m = 1; break; }
+        tokens.push(d); i += d.length; m = 1; break;
+      }
+    }
+    if (m) continue;
+    if ('kgtdxshmpbnrlfjzcq'.includes(word[i])) {
+      for (const v of VW) { if (word.startsWith(v, i + 1)) { tokens.push(word[i] + v); i += 1 + v.length; m = 1; break; } }
+      if (m) continue;
+      if (VS.includes(word[i + 1])) { tokens.push(word.slice(i, i + 2)); i += 2; continue; }
+      tokens.push(word[i]); i += 1; continue;
+    }
+    for (const v of [...VW, 'ou', 'ao']) { if (word.startsWith(v, i)) { tokens.push(v); i += v.length; m = 1; break; } }
+    if (m) continue;
+    tokens.push(word[i]); i += 1;
+  }
+  return tokens;
+}
+
+// ============================
+// Layer 3 — Ruby 生成器
+// ============================
+
+function buildRuby(segments) {
+  const htmlParts = [], displayParts = [];
+
+  for (const seg of segments) {
+    const syls = tokenize(seg.text);
+
+    if (seg.whole) {
+      // 整词标注：一个 ruby 包裹，但每个汉字包 span 以求逐字可点
+      const hanSpans = syls.map(s => {
+        const hasPool = sylHasPool(s);
+        const cls = hasPool ? ' class="ruby-clickable"' : '';
+        return `<span${cls} data-syl="${s}">${getHan(s)}</span>`;
+      }).join('');
+      const pua = syls.map(toPua).join('');
+      const tag = `<ruby class="ruby-whole">${hanSpans}<rt>${pua}</rt></ruby>`;
+      displayParts.push(tag); htmlParts.push(tag);
+    } else {
+      for (const s of syls) {
+        const han = getHan(s);
+        const pua = toPua(s);
+        const hasPool = sylHasPool(s);
+        const cls = hasPool ? ' class="ruby-clickable"' : '';
+        const tag = `<ruby${cls} data-syl="${s}">${han}<rt>${pua}</rt></ruby>`;
+        displayParts.push(tag); htmlParts.push(tag);
+      }
+    }
+  }
+  return { html: htmlParts.join(''), display: displayParts.join('') };
+}
+
+function parseInput(input) {
+  const segments = [];
+  const re = /<([^>]*)>|([^\s<>]+)/g;
+  let m;
+  while ((m = re.exec(input)) !== null) {
+    if (m[1] !== undefined) segments.push({ text: m[1].trim().toLowerCase(), whole: true });
+    else if (m[2] !== undefined) segments.push({ text: m[2].trim().toLowerCase(), whole: false });
+  }
+  return segments;
+}
+
+const inputEl = document.getElementById('latin-input');
+const rubyOutput = document.getElementById('ruby-output');
+const htmlOutput = document.getElementById('html-output');
+const choiceCount = document.getElementById('choice-count');
+
+function updateRuby() {
+  const segs = parseInput(inputEl.value);
+  const result = buildRuby(segs);
+  rubyOutput.innerHTML = result.display;
+  htmlOutput.textContent = result.html;
+  choiceCount.textContent = Object.keys(userChoices).length;
+  document.getElementById('btn-undo').disabled = historyIdx <= 0;
+  document.getElementById('btn-redo').disabled = historyIdx >= choiceHistory.length - 1;
+
+  // 绑定点击事件
+  rubyOutput.querySelectorAll('.ruby-clickable').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showPicker(el);
+    });
+  });
+}
+
+// === 选字面板 ===
+let activePicker = null;
+
+function showPicker(rubyEl) {
+  closePicker();
+  const syl = rubyEl.dataset.syl;
+  if (!syl || !sylHasPool(syl)) return;
+
+  const aPool = charPool.A[syl] || [];
+  const bPool = charPool.B[syl] || [];
+  const cChar = charPool.C[syl];
+
+  const panel = document.createElement('div');
+  panel.className = 'char-picker';
+  panel.id = 'char-picker';
+
+  const header = document.createElement('div');
+  header.className = 'cp-header';
+  const sylNode = document.createElement('span');
+  sylNode.className = 'cp-syl';
+  sylNode.textContent = syl;
+  const closeBtn = document.createElement('span');
+  closeBtn.className = 'cp-close';
+  closeBtn.textContent = '×';
+  closeBtn.onclick = (e) => { e.stopPropagation(); closePicker(); };
+  header.appendChild(sylNode);
+  header.appendChild(closeBtn);
+  panel.appendChild(header);
+
+  const curHan = getHan(syl);
+
+  function mkSection(title, chars, pool) {
+    if (!chars.length) return;
+    const sec = document.createElement('div');
+    sec.className = 'cp-section';
+    const secTitle = document.createElement('div');
+    secTitle.className = 'cp-section-title';
+    secTitle.textContent = title;
+    sec.appendChild(secTitle);
+    const row = document.createElement('div');
+    row.className = 'cp-chars';
+    chars.forEach(ch => {
+      const btn = document.createElement('span');
+      btn.className = 'cp-char' + (pool === 'C' ? ' cp-c' : '');
+      if (ch === curHan) btn.classList.add('active');
+      btn.textContent = ch;
+      btn.title = ch;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (ch === curHan) { closePicker(); return; }  // 已是当前字，不推历史
+        userChoices[syl] = ch;
+        pushHistory();
+        closePicker();
+        updateRuby();
+      });
+      row.appendChild(btn);
+    });
+    sec.appendChild(row);
+    panel.appendChild(sec);
+  }
+
+  mkSection('A 池 · 标准音译', aPool, 'A');
+  mkSection('B 池 · 风格音译', bPool, 'B');
+  if (cChar) mkSection('C 池 · 义译（不看读音）', [cChar], 'C');
+
+  // 添加「恢复默认」
+  const resetRow = document.createElement('div');
+  resetRow.className = 'cp-section';
+  resetRow.style.marginTop = '0.6rem';
+  resetRow.style.paddingTop = '0.4rem';
+  resetRow.style.borderTop = '1px solid #e8e0d0';
+  const resetBtn = document.createElement('span');
+  resetBtn.className = 'cp-char';
+  resetBtn.style.width = 'auto';
+  resetBtn.style.padding = '0 0.7rem';
+  resetBtn.style.fontSize = '0.8rem';
+  resetBtn.style.color = '#8b7355';
+  resetBtn.textContent = '← 恢复默认';
+  resetBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!(syl in userChoices)) { closePicker(); return; }  // 已是默认，不推历史
+    delete userChoices[syl];
+    pushHistory();
+    closePicker();
+    updateRuby();
+  });
+  resetRow.appendChild(resetBtn);
+  panel.appendChild(resetRow);
+
+  document.body.appendChild(panel);
+  activePicker = panel;
+
+  // 定位
+  const rect = rubyEl.getBoundingClientRect();
+  const top = rect.bottom + window.scrollY + 4;
+  let left = rect.left + window.scrollX;
+  if (left + 240 > window.innerWidth) left = window.innerWidth - 250;
+  if (left < 8) left = 8;
+  panel.style.top = top + 'px';
+  panel.style.left = left + 'px';
+
+  // 点击外部关闭
+  setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
+}
+
+function closePicker() {
+  if (activePicker) { activePicker.remove(); activePicker = null; }
+  document.removeEventListener('click', closeOnOutside);
+}
+function closeOnOutside(e) {
+  if (activePicker && !activePicker.contains(e.target) && !e.target.closest('.ruby-clickable')) {
+    closePicker();
+  }
+}
+
+// 重置所有选字
+document.getElementById('btn-reset-choices').addEventListener('click', () => {
+  for (const k of Object.keys(userChoices)) delete userChoices[k];
+  pushHistory();
+  closePicker();
+  updateRuby();
+});
+
+// undo / redo
+document.getElementById('btn-undo').addEventListener('click', undo);
+document.getElementById('btn-redo').addEventListener('click', redo);
+
+// 复制原始 HTML
+document.getElementById('btn-copy-html').addEventListener('click', () => {
+  const html = htmlOutput.textContent;
+  if (!html) return;
+  navigator.clipboard.writeText(html).then(() => {
+    const btn = document.getElementById('btn-copy-html');
+    btn.textContent = '已复制';
+    setTimeout(() => { btn.textContent = '复制'; }, 1200);
+  });
+});
+
+// 输入框持久化
+const LS_INPUT = 'haji_ruby_input';
+if (localStorage.getItem(LS_INPUT)) inputEl.value = localStorage.getItem(LS_INPUT);
+
+inputEl.addEventListener('input', () => {
+  try { localStorage.setItem(LS_INPUT, inputEl.value); }
+  catch { /* ignore */ }
+  updateRuby();
+});
+updateRuby();
+
+// 键盘快捷键
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'z' && !e.target.closest('input')) { e.preventDefault(); undo(); }
+  if (e.ctrlKey && e.key === 'y' && !e.target.closest('input')) { e.preventDefault(); redo(); }
+});
+
+// === 字库面板 ===
+(function buildPoolPanel() {
+  const tabsEl = document.getElementById('pool-tabs');
+  const gridEl = document.getElementById('pool-grid');
+  const containerList = ['k','g','t','d','x','s','h','m','p','b','n','r','l','f','j','z','c','zh','ch','sh','q','ng'];
+
+  // 选项卡
+  tabsEl.innerHTML = '<span class="pool-tab active" data-c="all">全部</span>' +
+    containerList.map(c => `<span class="pool-tab" data-c="${c}">${c}</span>`).join('');
+
+  function getClass(pool) {
+    return pool === 'A' ? 'opt-a' : pool === 'B' ? 'opt-b' : 'opt-c';
+  }
+  function getLabel(pool) {
+    return pool === 'A' ? 'A' : pool === 'B' ? 'B' : '义';
+  }
+
+  function renderGrid(filter) {
+    let html = '';
+    // 列头
+    html += '<div class="pool-hd"></div>';
+    VOWELS.forEach(v => { html += `<div class="pool-hd">${v}</div>`; });
+
+    containerList.forEach(con => {
+      if (filter && filter !== 'all' && con !== filter) return;
+      // 行头
+      html += `<div class="pool-hd" style="font-weight:700;color:#5c4a2e;">${con}</div>`;
+      VOWELS.forEach(v => {
+        const syl = con + v;
+        const cur = getHan(syl);
+        const aPool = charPool.A[syl] || [];
+        const bPool = charPool.B[syl] || [];
+        const cChar = charPool.C[syl];
+        html += `<div class="pool-cell"><span class="cur">${cur}</span><span class="opts">`;
+        aPool.forEach(ch => {
+          const cls = 'opt opt-a' + (ch === cur ? ' used' : '');
+          html += `<span class="${cls}" data-syl="${syl}" data-ch="${ch}" title="A">${ch}</span>`;
+        });
+        bPool.forEach(ch => {
+          const cls = 'opt opt-b' + (ch === cur ? ' used' : '');
+          html += `<span class="${cls}" data-syl="${syl}" data-ch="${ch}" title="B">${ch}</span>`;
+        });
+        if (cChar) {
+          const cls = 'opt opt-c' + (cChar === cur ? ' used' : '');
+          html += `<span class="${cls}" data-syl="${syl}" data-ch="${cChar}" title="C 义译">${cChar}</span>`;
+        }
+        html += '</span></div>';
+      });
+    });
+
+    // 独立果实
+    const indVowels = ['o','i','u','e','a','v','ei','ai'];
+    html += '<div class="pool-sep">独立果实（元音）</div>';
+    html += '<div></div>';
+    indVowels.forEach(v => { html += `<div class="pool-hd">${v}</div>`; });
+    html += '<div></div>';
+    indVowels.forEach(v => {
+      const cur = getHan(v);
+      const aPool = charPool.A[v] || [];
+      const bPool = charPool.B[v] || [];
+      html += `<div class="pool-cell"><span class="cur">${cur}</span><span class="opts">`;
+      aPool.forEach(ch => {
+        const cls = 'opt opt-a' + (ch === cur ? ' used' : '');
+        html += `<span class="${cls}" data-syl="${v}" data-ch="${ch}" title="A">${ch}</span>`;
+      });
+      bPool.forEach(ch => {
+        const cls = 'opt opt-b' + (ch === cur ? ' used' : '');
+        html += `<span class="${cls}" data-syl="${v}" data-ch="${ch}" title="B">${ch}</span>`;
+      });
+      html += '</span></div>';
+    });
+
+    gridEl.innerHTML = html;
+
+    // 点击选字
+    gridEl.querySelectorAll('.opt').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const syl = el.dataset.syl, ch = el.dataset.ch;
+        if (getHan(syl) === ch) return;
+        userChoices[syl] = ch;
+        pushHistory();
+        updateRuby();
+        renderGrid(document.querySelector('.pool-tab.active')?.dataset.c || 'all');
+      });
+    });
+  }
+
+  // 标签切换
+  tabsEl.addEventListener('click', (e) => {
+    const tab = e.target.closest('.pool-tab');
+    if (!tab) return;
+    tabsEl.querySelectorAll('.pool-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderGrid(tab.dataset.c);
+  });
+
+  // 展开/折叠
+  const toggle = document.getElementById('pool-toggle');
+  const body = document.getElementById('pool-body');
+  toggle.addEventListener('click', () => {
+    const open = body.classList.toggle('open');
+    toggle.classList.toggle('open', open);
+    if (open) renderGrid('all');
+  });
+
+  // 外部更新后刷新面板
+  const origUpdateRuby = updateRuby;
+  updateRuby = function() {
+    origUpdateRuby();
+    if (body.classList.contains('open')) {
+      renderGrid(document.querySelector('.pool-tab.active')?.dataset.c || 'all');
+    }
+  };
+})();
+
+// === 生成音节映射表 ===
+(function buildTable() {
+  const table = document.getElementById('syllable-table');
+  let html = '<table><thead><tr><th></th>';
+  VOWELS.forEach(v => html += `<th>${v}</th>`);
+  html += '</tr></thead><tbody>';
+
+  CONTAINERS.forEach(c => {
+    html += `<tr><th>${c.latin}</th>`;
+    VOWELS.forEach(v => {
+      const code = c.base + V_OFFSET[v];
+      const syl = c.latin + v;
+      const haji = String.fromCodePoint(code);
+      html += `<td class="haji" title="${syl} → U+${code.toString(16).toUpperCase()}">${haji}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  // 独立果实行（8个）
+  html += '<tr><th>独立</th>';
+  ['o','i','u','e','ei','a','v','ai'].forEach(v => {
+    const code = syllableMap[v];
+    html += `<td class="haji" title="${v} → U+${code.toString(16).toUpperCase()} (仅独立)">${String.fromCodePoint(code)}</td>`;
+  });
+  html += '</tr>';
+
+  html += '</tbody></table>';
+  table.innerHTML = html;
+})();
+</script>
+
+</body>
+</html>

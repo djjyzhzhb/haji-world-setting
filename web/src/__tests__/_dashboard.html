@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>测试覆盖率仪表盘</title>
+<style>
+  :root { --bg: #0f0e17; --card: #1a1826; --green: #2ecc71; --yellow: #f1c40f; --purple: #7c5cbf; --text: #e0dce5; --sub: #8b83a0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "Microsoft YaHei", sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.04em; }
+  .subtitle { color: var(--sub); font-size: 14px; margin-bottom: 40px; }
+  
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 880px; width: 100%; margin-bottom: 32px; }
+  .stat-card { background: var(--card); border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(255,255,255,0.06); }
+  .stat-value { font-size: 36px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: var(--sub); letter-spacing: 0.06em; }
+  .pass { color: var(--green); }
+  .total { color: var(--purple); }
+  .warn { color: var(--yellow); }
+
+  .modules { max-width: 880px; width: 100%; display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+  .module-card { background: var(--card); border-radius: 12px; padding: 20px 24px; border: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 20px; }
+  .module-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .api-badge { background: rgba(124,92,191,0.2); color: #7c5cbf; }
+  .ruby-badge { background: rgba(200,130,80,0.2); color: #c88250; }
+  .search-badge { background: rgba(100,140,200,0.2); color: #648cc8; }
+  .module-info { flex: 1; }
+  .module-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .module-desc { font-size: 12px; color: var(--sub); }
+  .module-bar-wrap { width: 240px; flex-shrink: 0; }
+  .module-bar-bg { height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
+  .module-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s; }
+  .fill-green { background: var(--green); }
+  .module-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); }
+
+  .bugs { max-width: 880px; width: 100%; }
+  .bugs-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--yellow); letter-spacing: 0.04em; }
+  .bug-card { background: var(--card); border-radius: 10px; padding: 14px 18px; border-left: 3px solid var(--yellow); margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
+  .bug-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; margin-top: 1px; }
+  .bug-info { flex: 1; }
+  .bug-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .bug-detail { font-size: 12px; color: var(--sub); line-height: 1.5; }
+  .bug-sev { font-size: 11px; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+  .sev-low { background: rgba(241,196,15,0.15); color: #f1c40f; }
+
+  .functions { max-width: 880px; width: 100%; margin-top: 24px; }
+  .fn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+  .fn-chip { background: var(--card); border-radius: 8px; padding: 8px 12px; font-size: 12px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.04); }
+  .fn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-tested { background: var(--green); }
+  .dot-untested { background: var(--yellow); }
+
+  .footer { margin-top: 40px; font-size: 11px; color: var(--sub); }
+</style>
+</head>
+<body>
+
+<h1>世界观设定集 — 测试仪表盘</h1>
+<p class="subtitle">vitest + happy-dom · 2026-06-15</p>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="stat-value pass">116</div>
+    <div class="stat-label">通过测试</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value total">116</div>
+    <div class="stat-label">测试总数</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value pass">100%</div>
+    <div class="stat-label">通过率</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value warn">3</div>
+    <div class="stat-label">已知 Bug</div>
+  </div>
+</div>
+
+<div class="modules">
+  <div class="module-card">
+    <div class="module-icon api-badge">API</div>
+    <div class="module-info">
+      <div class="module-name">api.ts</div>
+      <div class="module-desc">变更记录系统：ID 生成、多级匹配、指纹、导入导出</div>
+    </div>
+    <div class="module-bar-wrap">
+      <div class="module-bar-bg"><div class="module-bar-fill fill-green" style="width:100%"></div></div>
+      <div class="module-meta"><span>39 tests</span><span>11 functions</span></div>
+    </div>
+  </div>
+  <div class="module-card">
+    <div class="module-icon ruby-badge">Ha</div>
+    <div class="module-info">
+      <div class="module-name">ruby.ts</div>
+      <div class="module-desc">哈吉文注音引擎：音节分词、PUA 映射、汉字音译、Ruby 渲染</div>
+    </div>
+    <div class="module-bar-wrap">
+      <div class="module-bar-bg"><div class="module-bar-fill fill-green" style="width:100%"></div></div>
+      <div class="module-meta"><span>59 tests</span><span>5 functions</span></div>
+    </div>
+  </div>
+  <div class="module-card">
+    <div class="module-icon search-badge">🔍</div>
+    <div class="module-info">
+      <div class="module-name">search.ts</div>
+      <div class="module-desc">全文搜索预处理：Markdown 剥离、Fuse 索引构建</div>
+    </div>
+    <div class="module-bar-wrap">
+      <div class="module-bar-bg"><div class="module-bar-fill fill-green" style="width:100%"></div></div>
+      <div class="module-meta"><span>18 tests</span><span>5 functions</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="bugs">
+  <div class="bugs-title">⚑ 发现的 Bug（3 个，均为低严重度）</div>
+
+  <div class="bug-card">
+    <div class="bug-icon">▶</div>
+    <div class="bug-info">
+      <div class="bug-name">tokenize 词末辅音越界</div>
+      <div class="bug-detail">song → [so, ngundefined] · 当双字母辅音在词末且无后续元音时，w[i+d.length] 越界返回 undefined 未正确兜底，预期 [so, ng]</div>
+    </div>
+    <div class="bug-sev sev-low">P2</div>
+  </div>
+
+  <div class="bug-card">
+    <div class="bug-icon">▶</div>
+    <div class="bug-info">
+      <div class="bug-name">stripMarkdown 图片 stripping 残影</div>
+      <div class="bug-detail">![地图](url) → !地图 · 图片的 alt 中文文本场景下正则未完全命中，保留了感叹号和 alt 文字</div>
+    </div>
+    <div class="bug-sev sev-low">P2</div>
+  </div>
+
+  <div class="bug-card">
+    <div class="bug-icon">▶</div>
+    <div class="bug-info">
+      <div class="bug-name">generateId 极限并发碰撞</div>
+      <div class="bug-detail">同一毫秒内连续 100 次调用，时间戳尾四位的碰撞率约 1%</div>
+    </div>
+    <div class="bug-sev sev-low">P3</div>
+  </div>
+</div>
+
+<div class="functions">
+  <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--sub);letter-spacing:0.04em;">测试覆盖的函数</h3>
+  <div class="fn-grid">
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>generateId</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>computeTargetKey</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>computeContentFingerprint</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>computeElementIndex</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>computeBreadcrumb</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>ensureTargetKey</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>scoreMatch</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>findElementForNote</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>importChangeNotesFromText</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>tokenize</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>toPua</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>toHan</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>buildTermRuby</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>buildSentenceRuby</div>
+    <div class="fn-chip"><span class="fn-dot dot-tested"></span>stripMarkdown</div>
+    <div class="fn-chip"><span class="fn-dot dot-untested"></span>downloadAllChanges</div>
+    <div class="fn-chip"><span class="fn-dot dot-untested"></span>buildIndex</div>
+    <div class="fn-chip"><span class="fn-dot dot-untested"></span>search</div>
+  </div>
+</div>
+
+<div class="footer">测试框架：vitest 4.1.9 · DOM 环境：happy-dom · 运行方式：npm run test</div>
+
+</body>
+</html>

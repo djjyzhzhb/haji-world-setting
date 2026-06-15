@@ -1,0 +1,8 @@
+# 正确格式
+patch:
+  # 基础参数示例
+  "menu/page_size": 9
+  style:
+    font_face: "HaJi"  # 关键：指定支持PUA的字体
+    # 可选：调整字号（若候选词显示过小）
+    font_point: 16

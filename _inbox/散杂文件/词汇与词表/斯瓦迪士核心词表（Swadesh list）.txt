@@ -1,0 +1,19 @@
+1.我 ya　2.你 na　3.他 tu/tati  4.我们 yadi/yan　5.你们 nadi/nan　6.他们 tudi/tatin/tun　 7.这 suma　8.那 tama/gama　9.这里 sumadi　10.那里 tamadi/gamadi　 11.谁 shati/giogu　12.什么 sha　13.哪 shadi　14.何时 shasi　15.如何 gumar　16.不 ye　 17.所有 nanang　18.多seir　19.一些 cuzun/zucun　20.少beir　21.其他 gana　
+
+数量&尺度&人  22.一 zu　23.二 ne　24.三 cu　25.四 nen　26.五 suga　 27.大sali　28.长qali　29.宽pali　30.厚poli　31.重 puli  32.小zheili　33.短cul　34.窄cheili　35.薄lul　 36.女tixi　37.男 tiku　38.人 ti/ai　39.孩 muti/cumi  40.妻 tixi（ki）　41.夫 tiku（ki）　42.母 ximi　43.父 kuda　
+
+自然物  44.动物 sano/so　45.鱼 xino　46.鸟 kiso　47.狗　48.虱 sucuso　49.蛇miqano　50.虫 cuso　  51.树 gi　52.森 gin　53.枝 cugi　54.果 pudai　55.种 dai 　56.叶lugi　57.根qadai　  58.树皮　59.花cutü/cugi　60.草tü/tigi　61.绳qatün　
+
+器官  62.肤nesu　63.肉nasu　64.血zhixisu　65.骨dasu　66.脂xinona　67.蛋daina　68.角taiqana　69.尾tainona　70.羽kisotaina　  71.发shetaisu/seisu　72.头zugasu/sasu　73.耳netaisu/kokosu　74.眼satasu/jasu　75.鼻nezusu/hufusu/cetasu　76.口 jisu/mitasu 　77.牙 dajisu　78.舌 mijisu　  79.指甲dataisu　80.脚gasu　81.腿qagasu　82.膝　83.手gasu　84.翅kisona　  85.腹micesu　86.肠qacesu　87.颈　88.背　89.乳　90.心cesu　91.肝sacesu
+
+动词　  92.喝 he　93.吃 che　94.咬jiyi 　95.吸 fu　96.吐　97.呕　98.吹 hu　99.呼吸 hufu　100.笑wali　  101.看ja　102.听ko　103.知ce　104.想üqa　105.嗅hujiyi　106.怕　107.睡　108.住tiya　  109.死üshai　110.杀jixiyi　111.斗　112.猎　113.击 dayi　114.切　115.分　116.刺　  117.挠　118.挖　119.游　120.飞kij　121.走yij　122.来xij　123.躺　124.坐　  125.站　126.转　127.落mixi　128.给taxi　129.拿　130.挤　131.磨　132.洗　  133.擦　134.拉　135.推　136.扔　137.系　138.缝　139.计　  140.说kokai　141.唱　142.玩　143.浮　144.流 xi　145.冻xida　146.肿　
+
+自然环境  147.日jalang　148.月milang　149.星cumin　177.夜shes　178.昼shais　179.年　  162.天kisang　150.水xi　151.雨xicun/cuxin　160.云saxin　161.雾cucuxin　163.风ki　164.雪cudaxin　165.冰daxi　  152.河qaxing/xila　153.湖cujaxing/xija　154.海mixing/ximing  158.尘　159.地tu　156.石da　157.沙cuda　155.盐　170.路qadatu　171.山kuda　  166.烟　167.火zhi　168.灰　169.烧zhij　
+
+形容词  180.暖　181.冷　182.满　183.新　184.旧　  185.好jar　186.坏shir　187.腐　188.脏　189.直jaqaner　190.圆laner　  191.尖　192.钝　193.滑　194.湿xir　195.干　196.对　
+
+颜色  172.红zhi　173.绿gi　174.黄shai　175.白lami　176.黑she　（应该加青tüsa/蓝色saki）
+
+方位  197.近su　198.远ga/ma　199.右　200.左　
+
+介词连词  201.在zu　202.里ce　203.与ü　204.和ü　205.若ala　206.因dai　207.名nana
