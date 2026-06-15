@@ -13,6 +13,7 @@
     "vite": "^8.0.12"
   },
   "dependencies": {
+    "fuse.js": "^7.4.2",
     "marked": "^15.0.0"
   }
 }

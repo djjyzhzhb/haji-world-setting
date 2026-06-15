@@ -2,6 +2,7 @@ import './style.css'
 import { marked } from 'marked'
 import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges, scrollToNoteInContent, getSourceName, setSourceName, hideAnnotateBtn } from './ui/changes'
 import { ANNOTATABLE_SELECTOR } from './api'
+import { buildIndex, search } from './search'
 
 // --- Types ---
 interface NavItem {
@@ -15,190 +16,145 @@ interface DocEntry {
   path: string
   title: string
   content: string
+  causalRefs?: string[]     // front matter causal_refs
+  refsBy?: string[]         // 被哪些文档引用（运行时反向索引）
+  created?: string          // front matter created
+  modified?: string         // front matter modified
+  tags?: string[]           // front matter tags
+  status?: string           // front matter status
 }
 
-// --- Directory structure definition (recursive nesting) ---
-const directoryTree: NavItem[] = [
-  {
-    name: '00 项目总览',
-    path: '00_项目总览',
-    children: [
-      { name: '项目宪章', path: '00_项目总览/00_项目宪章.md' },
-      { name: '创作进度', path: '00_项目总览/01_创作进度.md' },
-      { name: '版本日志', path: '00_项目总览/02_版本日志.md' },
-      { name: '灵感来源与参考', path: '00_项目总览/03_灵感来源与参考.md' },
-    ]
-  },
-  {
-    name: '01 世界核心',
-    path: '01_世界核心',
-    children: [
-      { name: '宇宙结构', path: '01_世界核心/01_宇宙结构.md' },
-      { name: '创世神话', path: '01_世界核心/02_创世神话.md' },
-      { name: '根本法则', path: '01_世界核心/03_根本法则.md' },
-      { name: '时间体系', path: '01_世界核心/04_时间体系.md' },
-      { name: '维度与位面', path: '01_世界核心/05_维度与位面.md' },
-    ]
-  },
-  {
-    name: '02 地理',
-    path: '02_地理',
-    children: [
-      { name: '世界地图与总览', path: '02_地理/01_世界地图与总览.md' },
-      { name: '气候带与生态区', path: '02_地理/02_气候带与生态区.md' },
-      { name: '自然资源分布', path: '02_地理/03_自然资源分布.md' },
-      { name: '交通与贸易路线', path: '02_地理/04_交通与贸易路线.md' },
-      {
-        name: '大陆A',
-        path: '02_地理/05_大陆A',
-        overview: '02_地理/05_大陆A/00_大陆A总览.md',
-        children: [
-          { name: '区域A1', path: '02_地理/05_大陆A/01_区域A1.md' },
-          { name: '城市与据点索引', path: '02_地理/05_大陆A/03_城市与据点索引.md' },
-        ]
-      },
-    ]
-  },
-  {
-    name: '03 历史与年表',
-    path: '03_历史与年表',
-    children: [
-      { name: '大年表', path: '03_历史与年表/01_大年表.md' },
-      { name: '纪元划分', path: '03_历史与年表/02_纪元划分.md' },
-      { name: '因果链图谱', path: '03_历史与年表/04_因果链图谱.md' },
-      { name: '未解之谜与空白', path: '03_历史与年表/05_未解之谜与空白.md' },
-    ]
-  },
-  {
-    name: '04 种族与生物',
-    path: '04_种族与生物',
-    children: [
-      { name: '智慧种族总览', path: '04_种族与生物/01_智慧种族总览.md' },
-      {
-        name: '种族A',
-        path: '04_种族与生物/02_种族A',
-        overview: '04_种族与生物/02_种族A/00_种族A总览.md',
-        children: [
-          { name: '生理与特性', path: '04_种族与生物/02_种族A/01_生理与特性.md' },
-          { name: '文化与习俗', path: '04_种族与生物/02_种族A/02_文化与习俗.md' },
-          { name: '历史与起源', path: '04_种族与生物/02_种族A/03_历史与起源.md' },
-          { name: '种族关系', path: '04_种族与生物/02_种族A/04_与其他种族的关系.md' },
-        ]
-      },
-      {
-        name: '生物图鉴',
-        path: '04_种族与生物/04_生物图鉴',
-        children: [
-          { name: '普通生物', path: '04_种族与生物/04_生物图鉴/01_普通生物.md' },
-          { name: '幻想生物', path: '04_种族与生物/04_生物图鉴/02_幻想生物.md' },
-          { name: '传说级存在', path: '04_种族与生物/04_生物图鉴/03_传说级存在.md' },
-        ]
-      },
-    ]
-  },
-  {
-    name: '05 文化与社会',
-    path: '05_文化与社会',
-    children: [
-      { name: '语言文化桥梁', path: '05_文化与社会/01_语言文化桥梁.md' },
-      { name: '禁忌与伦理', path: '05_文化与社会/06_禁忌与伦理.md' },
-    ]
-  },
-  {
-    name: '06 政治与势力',
-    path: '06_政治与势力',
-    children: [
-      { name: '势力总览与关系图', path: '06_政治与势力/01_势力总览与关系图.md' },
-    ]
-  },
-  {
-    name: '07 经济与技术',
-    path: '07_经济与技术',
-    children: [
-      { name: '经济体系', path: '07_经济与技术/01_经济体系.md' },
-      { name: '产业与生产', path: '07_经济与技术/02_产业与生产.md' },
-      { name: '科技与工艺', path: '07_经济与技术/03_科技与工艺.md' },
-    ]
-  },
-  {
-    name: '08 力量体系',
-    path: '08_力量体系',
-    children: [
-      { name: '力量体系总论', path: '08_力量体系/01_力量体系总论.md' },
-      {
-        name: '体系A',
-        path: '08_力量体系/02_体系A',
-        children: [
-          { name: '原理与来源', path: '08_力量体系/02_体系A/01_原理与来源.md' },
-          { name: '规则与限制', path: '08_力量体系/02_体系A/02_规则与限制.md' },
-          { name: '分类与层级', path: '08_力量体系/02_体系A/03_分类与层级.md' },
-          { name: '能力列表', path: '08_力量体系/02_体系A/04_代表性能力列表.md' },
-        ]
-      },
-      { name: '禁忌知识与危险力量', path: '08_力量体系/04_禁忌知识与危险力量.md' },
-      { name: '力量与社会', path: '08_力量体系/05_力量与社会.md' },
-    ]
-  },
-  {
-    name: '09 角色',
-    path: '09_角色',
-    children: [
-      { name: '角色总索引', path: '09_角色/01_角色总索引.md' },
-      { name: '角色关系图谱', path: '09_角色/06_角色关系图谱.md' },
-    ]
-  },
-  {
-    name: '10 叙事',
-    path: '10_叙事',
-    children: [
-      { name: '叙事框架', path: '10_叙事/01_叙事框架.md' },
-      { name: '潜在叙事种子', path: '10_叙事/04_潜在叙事种子.md' },
-      { name: '叙事时间线', path: '10_叙事/06_叙事时间线.md' },
-    ]
-  },
-  {
-    name: '11 模组与冒险',
-    path: '11_模组与冒险',
-    children: [
-      { name: '模组总览', path: '11_模组与冒险/01_模组总览.md' },
-      { name: '随机遭遇表', path: '11_模组与冒险/05_随机遭遇表.md' },
-      { name: '冒险种子库', path: '11_模组与冒险/06_冒险种子库.md' },
-    ]
-  },
-  {
-    name: '12 附录与参考',
-    path: '12_附录与参考',
-    children: [
-      { name: '命名规则总表', path: '12_附录与参考/01_命名规则总表.md' },
-      { name: '度量衡体系', path: '12_附录与参考/02_度量衡体系.md' },
-      { name: '历法换算表', path: '12_附录与参考/03_历法换算表.md' },
-      { name: '常用短语与谚语', path: '12_附录与参考/04_常用短语与谚语.md' },
-      { name: '参考资料', path: '12_附录与参考/05_参考资料.md' },
-      { name: '创作工具推荐', path: '12_附录与参考/06_创作工具推荐.md' },
-    ]
-  },
-  {
-    name: '13 因果律与一致性',
-    path: '13_因果律与一致性',
-    children: [
-      { name: '因果律总则', path: '13_因果律与一致性/01_因果律总则.md' },
-      { name: '物质条件决定论', path: '13_因果律与一致性/02_物质条件决定论.md' },
-      { name: '力量体系与社会的互动', path: '13_因果律与一致性/03_力量体系与社会的互动.md' },
-      { name: '历史事件因果分析', path: '13_因果律与一致性/04_历史事件因果分析.md' },
-      { name: '一致性检查清单', path: '13_因果律与一致性/05_一致性检查清单.md' },
-      { name: '矛盾记录与修正', path: '13_因果律与一致性/06_矛盾记录与修正.md' },
-    ]
-  },
-]
+// --- 自动从目录结构生成导航树 ---
+function autoBuildDirectoryTree(): NavItem[] {
+  // 收集所有非排除路径
+  const paths: string[] = []
+  for (const importPath of Object.keys(allMdImports)) {
+    const clean = importPath.replace(/^\.\.\/\.\.\//, '')
+    // 锚点：只看 00_ 到 99_ 开头的目录下的 .md 文件
+    if (!/^\d{2}_/.test(clean)) continue
+    paths.push(clean)
+  }
+
+  function displayDirName(dir: string): string {
+    return dir.replace(/_/g, ' ')
+  }
+
+  function displayFileName(file: string): string {
+    const noExt = file.replace(/\.md$/, '')
+    const noNum = noExt.replace(/^\d{2}_/, '')
+    return noNum.replace(/_/g, ' ')
+  }
+
+  function buildNode(branchPaths: string[], parentPath: string): NavItem[] {
+    const dirs = new Map<string, string[]>()
+    const fileSet = new Set<string>()
+
+    for (const p of branchPaths) {
+      const slashIdx = p.indexOf('/')
+      if (slashIdx === -1) {
+        fileSet.add(p)
+      } else {
+        const dir = p.substring(0, slashIdx)
+        const rest = p.substring(slashIdx + 1)
+        if (!dirs.has(dir)) dirs.set(dir, [])
+        dirs.get(dir)!.push(rest)
+      }
+    }
+
+    // 收集所有唯一键（目录名 和 文件基本名），排序
+    const allKeys = new Set<string>()
+    for (const d of dirs.keys()) allKeys.add(d)
+    for (const f of fileSet) allKeys.add(f.replace(/\.md$/, ''))
+
+    const result: NavItem[] = []
+    const consumedFiles = new Set<string>()
+
+    for (const key of [...allKeys].sort()) {
+      const isDir = dirs.has(key)
+      const fileName = key + '.md'
+      const isFile = fileSet.has(fileName)
+      const fullPath = parentPath ? parentPath + '/' + key : key
+
+      if (isDir) {
+        const children = buildNode(dirs.get(key)!, fullPath)
+        const overview = isFile ? fullPath + '.md' : undefined
+        if (isFile) consumedFiles.add(fileName)
+
+        result.push({
+          name: displayDirName(key),
+          path: fullPath,
+          overview,
+          children,
+        })
+      } else if (isFile && !consumedFiles.has(fileName)) {
+        result.push({
+          name: displayFileName(fileName),
+          path: fullPath + '.md',
+        })
+      }
+    }
+
+    return result
+  }
+
+  return buildNode(paths, '')
+}
 
 // --- Import all markdown files ---
 const mdFiles = import.meta.glob('../../*.md', { query: '?raw', import: 'default' })
 const mdFilesDeep = import.meta.glob('../../**/*.md', { query: '?raw', import: 'default' })
 const allMdImports = { ...mdFiles, ...mdFilesDeep }
 
+const directoryTree: NavItem[] = autoBuildDirectoryTree()
+
+// O(1) 文档查找映射：cleanPath → importer
+const docImportMap: Map<string, () => Promise<string>> = new Map()
+for (const [importPath, importer] of Object.entries(allMdImports)) {
+  const cleanPath = importPath.replace(/^\.\.\/\.\.\//, '')
+  docImportMap.set(cleanPath, importer as () => Promise<string>)
+}
+
 // --- App state ---
 let currentDoc: DocEntry | null = null
 const docs: Map<string, DocEntry> = new Map()
+
+/** 阅读位置记忆：记录每个文档上次的 scrollTop */
+const scrollPositions: Map<string, number> = new Map()
+
+/** 扁平化文档路径列表（用于上一篇/下一篇），按导航顺序 */
+let flatDocPaths: string[] = []
+
+function buildFlatDocPaths(): void {
+  const result: string[] = []
+  function walk(items: NavItem[]) {
+    for (const item of items) {
+      if (item.overview) result.push(item.overview)
+      if (!item.children) {
+        result.push(item.path)
+      } else {
+        walk(item.children)
+      }
+    }
+  }
+  walk(directoryTree)
+  flatDocPaths = result
+}
+
+/** 构建反向引用索引：causalRefs 中引用了谁，谁就被谁引用 */
+function buildRefsBy(): void {
+  // 清空所有 refsBy
+  for (const doc of docs.values()) doc.refsBy = undefined
+  for (const doc of docs.values()) {
+    if (!doc.causalRefs) continue
+    for (const refPath of doc.causalRefs) {
+      const target = docs.get(refPath)
+      if (target) {
+        if (!target.refsBy) target.refsBy = []
+        if (!target.refsBy.includes(doc.path)) target.refsBy.push(doc.path)
+      }
+    }
+  }
+}
 
 // --- Build DOM ---
 const app = document.querySelector<HTMLDivElement>('#app')!
@@ -208,7 +164,10 @@ app.innerHTML = `
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <h1 class="sidebar-title">世界观设定集</h1>
-        <input type="text" id="search-input" class="search-input" placeholder="搜索文档..." />
+        <div class="search-area">
+          <input type="text" id="search-input" class="search-input" placeholder="搜索文档..." aria-label="搜索文档" />
+          <div class="search-results" id="search-results" style="display:none"></div>
+        </div>
       </div>
       <nav class="nav-tree" id="nav-tree"></nav>
     </aside>
@@ -222,6 +181,7 @@ app.innerHTML = `
 const hamburgerBtn = document.createElement('button')
 hamburgerBtn.className = 'hamburger-btn'
 hamburgerBtn.innerHTML = '☰'
+hamburgerBtn.setAttribute('aria-label', '打开菜单')
 hamburgerBtn.title = '菜单'
 document.body.appendChild(hamburgerBtn)
 
@@ -248,11 +208,13 @@ function snapSidebar(open: boolean): void {
   if (open) {
     sidebarEl.classList.add('open')
     hamburgerBtn.innerHTML = '✕'
+    hamburgerBtn.setAttribute('aria-label', '关闭菜单')
     hamburgerBtn.title = '关闭菜单'
     hamburgerBtn.classList.add('hamburger-close')
   } else {
     sidebarEl.classList.remove('open')
     hamburgerBtn.innerHTML = '☰'
+    hamburgerBtn.setAttribute('aria-label', '打开菜单')
     hamburgerBtn.title = '菜单'
     hamburgerBtn.classList.remove('hamburger-close')
   }
@@ -382,10 +344,13 @@ function renderNavItems(
       const arrowBtn = document.createElement('button')
       arrowBtn.className = 'nav-arrow-btn'
       arrowBtn.innerHTML = '▶'
+      arrowBtn.setAttribute('aria-expanded', 'false')
+      arrowBtn.setAttribute('aria-label', '展开分组')
       arrowBtn.title = '展开/缩合'
       arrowBtn.addEventListener('click', (e) => {
         e.stopPropagation()
         section.classList.toggle('collapsed')
+        arrowBtn.setAttribute('aria-expanded', String(!section.classList.contains('collapsed')))
       })
       header.appendChild(arrowBtn)
 
@@ -470,12 +435,22 @@ async function loadDocument(path: string) {
   // 切换文档时立即隐藏「+」按钮，防止残留在旧文档位置
   hideAnnotateBtn()
 
+  // 保存当前文档的阅读位置
+  if (currentDoc) {
+    scrollPositions.set(currentDoc.path, contentArea.scrollTop)
+  }
+
   // Check cache
   if (docs.has(path)) {
     const doc = docs.get(path)!
     currentDoc = doc
     renderContent(doc)
     updateActiveStates(path)
+    // 恢复阅读位置
+    const savedPos = scrollPositions.get(path)
+    if (savedPos !== undefined) {
+      requestAnimationFrame(() => { contentArea.scrollTop = savedPos })
+    }
     return
   }
 
@@ -483,14 +458,11 @@ async function loadDocument(path: string) {
   contentArea.innerHTML = '<div class="content-loading">加载中...</div>'
 
   try {
-    // Try to find the matching import
+    // O(1) 查找匹配的文档导入
     let rawContent: string | null = null
-    for (const [importPath, importer] of Object.entries(allMdImports)) {
-      if (importPath.includes(path)) {
-        const imported = await importer() as string
-        rawContent = imported
-        break
-      }
+    const importer = docImportMap.get(path)
+    if (importer) {
+      rawContent = await importer() as string
     }
     
     if (rawContent === null) {
@@ -504,6 +476,26 @@ async function loadDocument(path: string) {
       title = fmMatch[1]
     }
 
+    // Parse front matter fields
+    const fm = rawContent.match(/^\uFEFF?---\s*\n([\s\S]*?)---/)
+    let fmBlock = ''
+    if (fm) fmBlock = fm[1]
+
+    const created = fmBlock.match(/created:\s*(.+)/)?.[1]?.trim()
+    const modified = fmBlock.match(/modified:\s*(.+)/)?.[1]?.trim()
+    const status = fmBlock.match(/status:\s*(.+)/)?.[1]?.trim()
+    const tagsMatch = fmBlock.match(/tags:\s*\[([^\]]*)\]/)
+    const tags = tagsMatch
+      ? tagsMatch[1].split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
+      : undefined
+
+    let causalRefs: string[] | undefined
+    const causalMatch = fmBlock.match(/causal_refs:\s*\[([^\]]*)\]/)
+    if (causalMatch) {
+      const raw = causalMatch[1]
+      causalRefs = raw.split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
+    }
+
     // Strip YAML front matter for rendering (handle BOM)
     const contentWithoutFM = rawContent.replace(/^\uFEFF?---[\s\S]*?---\n*/, '')
     
@@ -511,9 +503,15 @@ async function loadDocument(path: string) {
       path,
       title,
       content: contentWithoutFM,
+      causalRefs,
+      created,
+      modified,
+      tags,
+      status,
     }
     
     docs.set(path, doc)
+    buildRefsBy()
     currentDoc = doc
     renderContent(doc)
     updateActiveStates(path)
@@ -527,24 +525,168 @@ async function loadDocument(path: string) {
 }
 
 function renderContent(doc: DocEntry) {
-  const html = marked.parse(doc.content) as string
+  const html = (marked.parse(doc.content) as string).replace(/<img /g, '<img loading="lazy" ')
 
   if (doc.path === 'home.md') {
-    // 主页特殊渲染：居中、无标题栏，但 badge/导航仍统一处理
     contentArea.innerHTML = `<div class="home-content">${html}</div>`
     scanAndRenderBadges(contentArea, doc.path)
     expandAndHighlightNav(doc.path)
     return
   }
 
+  const chClass = chapterClassForPath(doc.path)
+
   contentArea.innerHTML = `
-    <h1 class="content-title">${doc.title}</h1>
+    <h1 class="content-title ${chClass}">${doc.title}</h1>
+    ${renderDocMeta(doc)}
+    ${renderCausalBar(doc)}
     <div class="content-body">${html}</div>
+    ${renderPrevNext(doc.path)}
   `
-  // 扫描内容，给有记录的段落加角标
   scanAndRenderBadges(contentArea, doc.path)
-  // 展开并高亮左侧导航对应项
   expandAndHighlightNav(doc.path)
+}
+
+// 关联文档点击委托（绑定在 contentArea 上）
+contentArea.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement
+  if (target.classList.contains('causal-link')) {
+    const path = target.dataset.causalPath
+    if (path) loadDocument(path)
+    return
+  }
+  // 上一篇/下一篇点击委托
+  const navLink = target.closest('[data-nav-path]') as HTMLElement | null
+  if (navLink) {
+    const path = navLink.dataset.navPath
+    if (path) loadDocument(path)
+  }
+})
+
+// --- Annotate button hover/tap 绑定（只在初始化时调用一次） ---
+
+/** 渲染关联文档横条 */
+function renderCausalBar(doc: DocEntry): string {
+  const refs = doc.causalRefs
+  const refsBy = doc.refsBy
+  if (!refs && !refsBy) return ''
+
+  const items: string[] = []
+  if (refs && refs.length > 0) {
+    const refTitles = refs.map(r => {
+      const refDoc = docs.get(r)
+      const displayName = refDoc ? refDoc.title : r.split('/').pop()?.replace('.md', '') || r
+      return `<a class="causal-link" data-causal-path="${escapeHtml(r)}">${escapeHtml(displayName)}</a>`
+    }).join('、')
+    items.push(`<span class="causal-label">引用</span> ${refTitles}`)
+  }
+  if (refsBy && refsBy.length > 0) {
+    const refTitles = refsBy.map(r => {
+      const refDoc = docs.get(r)
+      const displayName = refDoc ? refDoc.title : r.split('/').pop()?.replace('.md', '') || r
+      return `<a class="causal-link" data-causal-path="${escapeHtml(r)}">${escapeHtml(displayName)}</a>`
+    }).join('、')
+    items.push(`<span class="causal-label">被引用</span> ${refTitles}`)
+  }
+
+  return `<div class="causal-bar">${items.join(' <span class="causal-sep">|</span> ')}</div>`
+}
+
+/** 从文档路径提取章节名 */
+function getChapterName(path: string): string {
+  const parts = path.split('/')
+  if (parts.length >= 1) {
+    const first = parts[0]
+    const match = first.match(/^\d{2}_(.+)/)
+    if (match) return match[1]
+    return first
+  }
+  return '其他'
+}
+
+/** 章节色彩映射：14个章节 → 微妙的强调色 */
+const chapterColors: Record<string, string> = {
+  '00': '163, 140, 190',  // 项目总览 — 淡紫灰
+  '01': '100, 140, 200',  // 世界核心 — 蓝
+  '02': '80, 160, 120',   // 地理 — 绿
+  '03': '190, 140, 80',   // 历史 — 金棕
+  '04': '180, 110, 110',  // 种族 — 暖红
+  '05': '170, 120, 180',  // 文化 — 紫
+  '06': '130, 100, 170',  // 政治 — 深紫
+  '07': '100, 150, 180',  // 经济 — 青灰
+  '08': '200, 130, 80',   // 力量 — 橙
+  '09': '150, 120, 160',  // 角色 — 暗紫
+  '10': '120, 150, 130',  // 叙事 — 灰绿
+  '11': '160, 120, 100',  // 模组 — 棕
+  '12': '140, 140, 140',  // 附录 — 中性灰
+  '13': '180, 100, 140',  // 因果律 — 玫红
+}
+
+function chapterClassForPath(path: string): string {
+  const parts = path.split('/')
+  const chNum = parts[0].match(/^(\d{2})_/)?.[1]
+  return chNum ? `ch-${chNum}` : ''
+}
+
+function chapterColorForPath(path: string): string {
+  const parts = path.split('/')
+  const chNum = parts[0].match(/^(\d{2})_/)?.[1]
+  return chNum && chapterColors[chNum] ? chapterColors[chNum] : chapterColors['00']
+}
+
+/** 渲染 front matter 信息条 */
+function renderDocMeta(doc: DocEntry): string {
+  const idx = flatDocPaths.indexOf(doc.path)
+  const total = flatDocPaths.length
+  const ordinal = idx >= 0 ? `第 ${idx + 1} / ${total} 篇` : ''
+
+  const parts: string[] = []
+  if (doc.created) parts.push(`创建于 ${doc.created}`)
+  if (doc.modified) parts.push(`已修改 ${doc.modified}`)
+  if (doc.tags && doc.tags.length > 0) parts.push(doc.tags.map(t => `#${t}`).join(' '))
+  if (doc.status) {
+    const statusLabel: Record<string, string> = { draft: '草稿', review: '审阅中', final: '定稿' }
+    const label = statusLabel[doc.status] || doc.status
+    parts.push(`<span class="meta-status meta-status-${doc.status}">${label}</span>`)
+  }
+
+  const meta = parts.length > 0 ? `<div class="doc-meta">${parts.join(' · ')}</div>` : ''
+  if (!ordinal) return meta
+
+  return `<div class="doc-ordinal">${ordinal}</div>${meta}`
+}
+
+/** 渲染底部上一篇/下一篇导航 */
+function renderPrevNext(currentPath: string): string {
+  const idx = flatDocPaths.indexOf(currentPath)
+  if (idx === -1) return ''
+
+  const prevPath = idx > 0 ? flatDocPaths[idx - 1] : null
+  const nextPath = idx < flatDocPaths.length - 1 ? flatDocPaths[idx + 1] : null
+  if (!prevPath && !nextPath) return ''
+
+  let prevHtml = ''
+  let nextHtml = ''
+
+  if (prevPath) {
+    const prevTitle = docs.get(prevPath)?.title || prevPath.split('/').pop()?.replace('.md', '') || prevPath
+    prevHtml = `<a class="prevnext-link prevnext-prev" data-nav-path="${escapeHtml(prevPath)}">
+      <span class="prevnext-label">← 上一篇</span>
+      <span class="prevnext-title">${escapeHtml(prevTitle)}</span>
+    </a>`
+  }
+  if (nextPath) {
+    const nextTitle = docs.get(nextPath)?.title || nextPath.split('/').pop()?.replace('.md', '') || nextPath
+    nextHtml = `<a class="prevnext-link prevnext-next" data-nav-path="${escapeHtml(nextPath)}">
+      <span class="prevnext-label">下一篇 →</span>
+      <span class="prevnext-title">${escapeHtml(nextTitle)}</span>
+    </a>`
+  }
+
+  return `<nav class="prevnext-nav">
+    <div class="prevnext-left">${prevHtml}</div>
+    <div class="prevnext-right">${nextHtml}</div>
+  </nav>`
 }
 
 // --- Annotate button hover/tap 绑定（只在初始化时调用一次） ---
@@ -697,13 +839,165 @@ function expandAndHighlightNav(path: string) {
     targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     // 加永久高亮（不消失）
     targetEl.classList.add('nav-pulse')
+    // 章节色彩：给 active 项加章节 class
+    const chClass = chapterClassForPath(path)
+    if (chClass) {
+      targetEl.classList.add(chClass)
+    }
   }
 }
 
-// --- Search ---
-searchInput.addEventListener('input', () => {
-  renderNavTree(directoryTree, navTree, searchInput.value.trim())
+// --- 回到顶部按钮 ---
+const backToTopBtn = document.createElement('button')
+backToTopBtn.className = 'back-to-top'
+backToTopBtn.setAttribute('aria-label', '回到顶部')
+backToTopBtn.title = '回到顶部'
+backToTopBtn.innerHTML = '↑'
+document.body.appendChild(backToTopBtn)
+
+let backToTopVisible = false
+function updateBackToTop() {
+  const show = contentArea.scrollTop > window.innerHeight * 0.6
+  if (show !== backToTopVisible) {
+    backToTopVisible = show
+    backToTopBtn.classList.toggle('visible', show)
+  }
+}
+contentArea.addEventListener('scroll', updateBackToTop, { passive: true })
+backToTopBtn.addEventListener('click', () => {
+  contentArea.scrollTo({ top: 0, behavior: 'smooth' })
 })
+
+// --- Search ---
+const searchResultsEl = document.getElementById('search-results')!
+let searchIndexReady = false
+let selectIdx = -1
+
+searchInput.addEventListener('input', () => {
+  const query = searchInput.value.trim()
+  renderNavTree(directoryTree, navTree, query)
+
+  if (query.length >= 1) {
+    doFullTextSearch(query)
+  } else {
+    hideSearchResults()
+  }
+})
+
+searchInput.addEventListener('focus', () => {
+  const query = searchInput.value.trim()
+  if (query.length >= 1) {
+    doFullTextSearch(query)
+  }
+})
+
+searchInput.addEventListener('keydown', (e) => {
+  const items = searchResultsEl.querySelectorAll<HTMLElement>('.search-result-item')
+  if (items.length === 0) return
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    selectIdx = Math.min(selectIdx + 1, items.length - 1)
+    updateSearchSelection(items)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    selectIdx = Math.max(selectIdx - 1, 0)
+    updateSearchSelection(items)
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    if (selectIdx >= 0 && selectIdx < items.length) {
+      const path = items[selectIdx].dataset.path
+      if (path) {
+        hideSearchResults()
+        loadDocument(path)
+      }
+    }
+  } else if (e.key === 'Escape') {
+    hideSearchResults()
+  }
+})
+
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement
+  if (!target.closest('.search-area')) {
+    hideSearchResults()
+  }
+})
+
+async function doFullTextSearch(query: string) {
+  if (!searchIndexReady) {
+    searchResultsEl.style.display = 'block'
+    searchResultsEl.innerHTML = '<div class="search-result-empty">正在建立搜索索引…</div>'
+    await buildIndex(docs, allMdImports)
+    searchIndexReady = true
+  }
+
+  const results = search(query, 10)
+  selectIdx = -1
+
+  if (results.length === 0) {
+    searchResultsEl.style.display = 'block'
+    searchResultsEl.innerHTML = '<div class="search-result-empty">未找到匹配的文档</div>'
+    return
+  }
+
+  searchResultsEl.style.display = 'block'
+  
+  // 按章节分组
+  const grouped: Map<string, typeof results> = new Map()
+  for (const r of results) {
+    const ch = getChapterName(r.path)
+    if (!grouped.has(ch)) grouped.set(ch, [])
+    grouped.get(ch)!.push(r)
+  }
+
+  let html = ''
+  for (const [chapter, items] of grouped) {
+    html += `<div class="search-group-header">${escapeHtml(chapter)}（${items.length} 条结果）</div>`
+    html += items.map((r, i) => `
+    <div class="search-result-item" data-path="${escapeHtml(r.path)}" data-idx="${i}">
+      <div class="search-result-title">${escapeHtml(r.title)}</div>
+      <div class="search-result-snippet">${highlightMatch(r.snippet, query)}</div>
+    </div>`).join('')
+  }
+  
+  searchResultsEl.innerHTML = html
+
+  searchResultsEl.querySelectorAll('.search-result-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const path = (el as HTMLElement).dataset.path
+      if (path) {
+        hideSearchResults()
+        loadDocument(path)
+      }
+    })
+  })
+}
+
+function updateSearchSelection(items: NodeListOf<HTMLElement>) {
+  items.forEach((el, i) => {
+    el.classList.toggle('selected', i === selectIdx)
+    if (i === selectIdx) el.scrollIntoView({ block: 'nearest' })
+  })
+}
+
+function hideSearchResults() {
+  searchResultsEl.style.display = 'none'
+  selectIdx = -1
+}
+
+function escapeHtml(text: string): string {
+  const d = document.createElement('div')
+  d.textContent = text
+  return d.innerHTML
+}
+
+function highlightMatch(text: string, query: string): string {
+  const escaped = escapeHtml(text)
+  const escapedQ = escapeHtml(query)
+  const regex = new RegExp(`(${escapedQ.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})`, 'gi')
+  return escaped.replace(regex, '<mark>$1</mark>')
+}
 
 // --- 跨文档定位：当变更面板「定位」按钮按下且目标文档不在当前显示时，自动切换文档
 window.addEventListener('change-locate-doc', ((ev: CustomEvent) => {
@@ -735,6 +1029,7 @@ window.addEventListener('change-expand-nav', ((ev: CustomEvent) => {
 }) as EventListener)
 
 // --- Init ---
+buildFlatDocPaths()
 renderNavTree(directoryTree, navTree)
 initChangesSystem()
 initAnnotateHoverSystem()
@@ -1103,6 +1398,7 @@ if (!localStorage.getItem('identity-asked')) {
 const helpBtn = document.createElement('button')
 helpBtn.className = 'help-btn'
 helpBtn.innerHTML = '?'
+helpBtn.setAttribute('aria-label', '功能说明')
 helpBtn.title = '功能说明'
 document.body.appendChild(helpBtn)
 helpBtn.addEventListener('click', () => {
