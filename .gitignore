@@ -26,6 +26,9 @@ _inbox/其他/*
 !_inbox/其他/.gitkeep
 !_inbox/README.md
 
+# 故事内容（不上传）
+故事/
+
 # IDE
 .vscode/
 .idea/
