@@ -171,6 +171,9 @@ app.innerHTML = `
           <input type="text" id="search-input" class="search-input" placeholder="搜索文档..." aria-label="搜索文档" />
           <div class="search-results" id="search-results" style="display:none"></div>
         </div>
+        <div class="tool-links" style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #e8e0d0;">
+          <a href="./ruby-demo.html" class="tool-link" style="display:inline-block;color:#5c4a2e;text-decoration:none;padding:0.35rem 0.7rem;background:#fff;border:1px solid #d0c4b0;border-radius:4px;font-size:0.85rem;" target="_self">哈吉文工具页 →</a>
+        </div>
       </div>
       <nav class="nav-tree" id="nav-tree"></nav>
     </aside>
