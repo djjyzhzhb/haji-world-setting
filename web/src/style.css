@@ -2911,7 +2911,7 @@ body {
 /* ===== 哈吉文 Ruby 标注（主页内嵌） ===== */
 @font-face {
   font-family: 'HaJi';
-  src: url('/哈吉文.woff2') format('woff2');
+  src: url('./哈吉文.woff2') format('woff2');
   unicode-range: U+E000-E6FF;
   font-display: swap;
 }
