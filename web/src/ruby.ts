@@ -15,10 +15,22 @@ const CONTAINERS = [
   { l:'q', b:0xE548 },{ l:'ng',b:0xE572 },
 ];
 
-const sylMap: Record<string,number> = {};
-CONTAINERS.forEach(c => VOWELS.forEach(v => { sylMap[c.l+v] = c.b + V_OFF[v]; }));
+const sylMap: Record<string, number> = {};
+CONTAINERS.forEach(c => VOWELS.forEach(v => { sylMap[c.l + v] = c.b + V_OFF[v]; }));
 Object.assign(sylMap, { o:0xE000, i:0xE001, u:0xE002, e:0xE003, ei:0xE004, a:0xE005, v:0xE006, ai:0xE007 });
 Object.assign(sylMap, { w:0xE002, y:0xE001, iu:0xE006, ou:0xE000, ao:0xE000 });
+
+// 独立容器（辅音单独出现时的字形） U+E030 – U+E045
+const CONSONANTS: Record<string, number> = {
+  k:0xE030, g:0xE031, t:0xE032, d:0xE033, x:0xE034, s:0xE035, h:0xE036, m:0xE037,
+  p:0xE038, b:0xE039, n:0xE03A, r:0xE03B, l:0xE03C, f:0xE03D, j:0xE03E, z:0xE03F,
+  c:0xE040, zh:0xE041, ch:0xE042, sh:0xE043, q:0xE044, ng:0xE045,
+};
+// 独立封盖（韵尾）U+E600 – U+E604（用前缀 - 表示封盖，避免覆盖独立容器）
+const FINALS: Record<string, number> = {
+  '-s':0xE600, '-r':0xE601, '-n':0xE602, '-ng':0xE603, '-y':0xE604,
+};
+Object.assign(sylMap, CONSONANTS, FINALS);
 
 const defaultA: Record<string,string> = {
   ko:'可',ki:'基',ku:'库',ke:'克',ka:'卡',kv:'屈',kei:'凯',kai:'开',
