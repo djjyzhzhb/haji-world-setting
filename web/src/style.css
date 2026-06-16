@@ -2943,6 +2943,85 @@ ruby.haji-term {
   margin-top: 2px;
 }
 
+/* 可点击选字的 ruby 元素 */
+.ruby-clickable {
+  cursor: pointer;
+  padding: 0 1px;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+.ruby-clickable:hover {
+  background: rgba(190, 160, 90, 0.18);
+  box-shadow: 0 0 0 1px rgba(150, 120, 70, 0.3);
+}
+
+/* 选字面板 */
+.haji-picker {
+  position: absolute;
+  z-index: 9999;
+  background: #fff8e8;
+  border: 1px solid #b8956a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 24px rgba(80, 60, 30, 0.25);
+  font-family: inherit;
+  min-width: 220px;
+}
+.haji-picker-title {
+  font-size: 12px;
+  color: #6b5538;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e8d8b8;
+}
+.haji-picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.haji-picker-char {
+  padding: 4px 10px;
+  border: 1px solid #c8a878;
+  border-radius: 4px;
+  background: #fff;
+  color: #3a2f1e;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  min-width: 32px;
+}
+.haji-picker-char:hover {
+  background: #f8eddd;
+  border-color: #8b6b3a;
+}
+.haji-picker-char.active {
+  background: #8b6b3a;
+  color: #fff;
+  border-color: #5c4a2e;
+}
+.haji-picker-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed #d8c49a;
+}
+.haji-picker-action {
+  background: none;
+  border: 1px solid #c8a878;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: #6b5538;
+  font-size: 12px;
+  text-align: left;
+}
+.haji-picker-action:hover {
+  background: #f3e8d0;
+}
+
+
 /* 功能说明弹窗里的代码示例 */
 .welcome-code {
   display: inline-block;

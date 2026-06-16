@@ -57,7 +57,7 @@ code {
   font-size: 0.92em;
   font-family: 'JetBrains Mono', 'Consolas', monospace;
 }
-
+/* 代码块（pre 内的 code）不要浅色背景，否则会把文字"吃掉" */
 pre {
   background: #2c2416;
   color: #f0ebe0;
@@ -67,6 +67,85 @@ pre {
   font-size: 0.85rem;
   line-height: 1.7;
   margin: 0.8rem 0;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  color: #f0ebe0;
+  font-size: 0.9rem;
+  line-height: 1.8;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+/* —— 第四节：设定文档示例的效果展示 —— */
+.example-block {
+  margin-top: 1rem;
+  padding: 1rem 1.2rem;
+  background: #fdf8ef;
+  border: 1px dashed #c9b88e;
+  border-radius: 8px;
+}
+.example-block .ex-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: #8b7355;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.example-block .ex-label::before {
+  content: '';
+  width: 14px;
+  height: 2px;
+  background: #8b7355;
+  border-radius: 2px;
+}
+.example-block .ex-source {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 1rem;
+  color: #2c2416;
+  background: #fff;
+  padding: 0.6rem 0.9rem;
+  border-radius: 4px;
+  border: 1px solid #e0d5c1;
+  margin-bottom: 0.7rem;
+  word-break: break-all;
+  line-height: 1.85;
+}
+.example-block .ex-source .hl {
+  color: #b85c3a;
+  font-weight: 700;
+  background: #fff4ef;
+  padding: 0.05em 0.25em;
+  border-radius: 3px;
+  margin: 0 0.08em;
+}
+.example-block .ex-render {
+  font-size: 1.55rem;
+  line-height: 2.4;
+  color: #2c2416;
+  padding: 0.8rem 1rem;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #e0d5c1;
+}
+.example-block .ex-render ruby {
+  margin-right: 0.05em;
+}
+.example-block .ex-render .haji-term rt {
+  color: #b85c3a;
+  font-family: 'HaJi', serif;
+  font-size: 0.45em;
+}
+.example-block .ex-render .haji-sentence ruby {
+  letter-spacing: 0.08em;
+}
+.example-block .ex-render .haji-sentence rt {
+  color: #b85c3a;
+  font-family: 'HaJi', serif;
+  font-size: 0.45em;
 }
 
 /* ===== Ruby 注音核心样式 ===== */
@@ -632,22 +711,38 @@ rt { font-family: 'HaJi', serif; }</pre>
 <h3>1. 整句/段落级混写 <code>(((( ... ))))</code></h3>
 <div class="card">
   <p><b>写法</b>：用四对括号包裹一段文字，<b>只有里面的拉丁字母会被当作哈吉语</b>做 ruby 注音，中文、标点、空格全部原样保留。</p>
-  <pre><code>((((哈吉语中，"qoko" 意为 "山"，而 "naxomi" 意为 "城"。人们说 "mogu naxomi" 即 "山下之城"。))))</code></pre>
+  <pre><code>((((哈吉人姓名分三部分：mogu（姓）· naxomi（名）· qoko（称）。
+姓在前，名居中，最后是亲昵称呼。))))</code></pre>
+  <div class="example-block" data-mode="mixed">
+    <div class="ex-label">源码 → 渲染效果</div>
+    <div class="ex-source">哈吉人姓名分三部分：mogu（姓）· naxomi（名）· qoko（称）。姓在前，名居中，最后是亲昵称呼。</div>
+    <div class="ex-render"></div>
+  </div>
   <p>适合：整段文字、翻译对照、故事场景。</p>
 </div>
 
 <h3>2. 逐词逐音节 <code>{{ruby: mogu naxomi qoko}}</code></h3>
 <div class="card">
   <p><b>写法</b>：在文档正文的任意位置，用 <code>{{ruby: 空格分隔的词汇}}</code> 短标记。</p>
-  <pre><code>这座城的哈吉语名字是 {{ruby: mogu naxomi qoko}}。</code></pre>
+  <pre><code>这位哈吉人的全名是 {{ruby: mogu naxomi qoko}}（姓·名·称三部分）。</code></pre>
+  <div class="example-block" data-mode="space">
+    <div class="ex-label">实际渲染成 ↓</div>
+    <div class="ex-source">这位哈吉人的全名是 mogu naxomi qoko（姓·名·称三部分）。</div>
+    <div class="ex-render"></div>
+  </div>
   <p>适合：专有名词、短句、术语解释。</p>
 </div>
 
 <h3>3. 整词一个 ruby <code>{{ruby: &lt;naxomi&gt;}}</code></h3>
 <div class="card">
   <p><b>写法</b>：在短标记里用 <code>&lt;</code> / <code>&gt;</code> 把词包起来，整个词共享一个 ruby 容器（多个音节排成一行）。</p>
-  <pre><code>这座城的名字是 {{ruby: &lt;naxomi&gt;}}。</code></pre>
-  <p>适合：人名、地名、专有称谓（例如"纳索米"作为整体呈现，而不是拆成三个汉字）。</p>
+  <pre><code>娜笑米（{{ruby: &lt;naxomi&gt;}}）是一位哈吉学者。</code></pre>
+  <div class="example-block" data-mode="whole">
+    <div class="ex-label">实际渲染成 ↓（上方 2 是三个字各自注音；这里三个字共享一条哈吉文）</div>
+    <div class="ex-source">娜笑米（&lt;naxomi&gt;）是一位哈吉学者。</div>
+    <div class="ex-render"></div>
+  </div>
+  <p>适合：人名、地名、专有称谓（例如"娜笑米"作为整体呈现，而不是拆成三个汉字）。</p>
 </div>
 
 <p class="hint">提示：以上三种标记可以在同一文档中混用；如果你只是想试一下音节拆分、或想把一整段哈吉语翻译转成 ruby 文本，继续往下看 ↓</p>
@@ -703,6 +798,10 @@ rt { font-family: 'HaJi', serif; }</pre>
 
 // 8 个果实
 const VOWELS = ['o','i','u','e','a','v','ei','ai'];
+// 声母/韵母分类常量（tokenize 与第四节静态示例共用）
+const DBL = ['zh','ch','sh','ng'];
+const VW = ['ai','ei','iu'];
+const VS = 'oiueav';
 const V_OFFSET = { o:0, i:1, u:2, e:3, a:4, v:5, ei:6, ai:7 };
 // 22 个容器（W/Y 仅作键盘别名，不做字形）
 const CONTAINERS = [
@@ -888,7 +987,6 @@ function toHex(s)  { const c = syllableMap[s]; return c !== undefined ? '&#' + c
 
 // 拉丁转写 → 音节序列
 function tokenize(word) {
-  const DBL = ['zh','ch','sh','ng'], VW = ['ai','ei','iu'], VS = 'oiueav';
   const tokens = []; let i = 0;
   while (i < word.length) {
     let m;
@@ -959,6 +1057,49 @@ function parseInput(input) {
   return segments;
 }
 
+// —— 第四节：三种标记语法的动态演示 ——
+// 整句混写：扫描文本，把连续拉丁字母当作哈吉语词汇，其余原样保留
+function renderMixed(text) {
+  const parts = [];
+  let i = 0;
+  while (i < text.length) {
+    // 匹配一串拉丁字母（仅限 a-z，忽略尖括号等标记字符）
+    const m = text.slice(i).match(/^[a-zA-Z]+/);
+    if (m) {
+      const word = m[0].toLowerCase();
+      parts.push(buildRuby([{ text: word, whole: false }]).display);
+      i += word.length;
+    } else {
+      parts.push(text[i]);
+      i += 1;
+    }
+  }
+  return parts.join('');
+}
+
+function renderStaticExamples() {
+  document.querySelectorAll('.example-block').forEach(block => {
+    const mode = block.dataset.mode;
+    const render = block.querySelector('.ex-render');
+    if (!render) return;
+    if (mode === 'mixed') {
+      render.innerHTML = renderMixed('哈吉人姓名分三部分：mogu（姓）· naxomi（名）· qoko（称）。姓在前，名居中，最后是亲昵称呼。');
+    } else if (mode === 'space') {
+      render.innerHTML = buildRuby(parseInput('mogu naxomi qoko')).display + '（姓·名·称三部分）。';
+      render.insertAdjacentHTML('afterbegin', '这位哈吉人的全名是 ');
+    } else if (mode === 'whole') {
+      render.innerHTML = '娜笑米（' + buildRuby(parseInput('<naxomi>')).display + '）是一位哈吉学者。';
+    }
+    // 绑定点击选字事件
+    render.querySelectorAll('.ruby-clickable').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showPicker(el);
+      });
+    });
+  });
+}
+
 const inputEl = document.getElementById('latin-input');
 const rubyOutput = document.getElementById('ruby-output');
 const htmlOutput = document.getElementById('html-output');
@@ -980,6 +1121,9 @@ function updateRuby() {
       showPicker(el);
     });
   });
+
+  // 同时重绘第四节的静态示例（用最新的 userChoices）
+  renderStaticExamples();
 }
 
 // === 选字面板 ===
@@ -1130,6 +1274,7 @@ inputEl.addEventListener('input', () => {
   updateRuby();
 });
 updateRuby();
+renderStaticExamples();
 
 // 键盘快捷键
 document.addEventListener('keydown', (e) => {

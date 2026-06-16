@@ -3,6 +3,19 @@ import { marked } from 'marked'
 import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges, scrollToNoteInContent, getSourceName, setSourceName, hideAnnotateBtn } from './ui/changes'
 import { ANNOTATABLE_SELECTOR } from './api'
 import { buildIndex, search } from './search'
+import { setHanChoice, resetHanChoice, resetAllHanChoices, getHanOptions, getAllHanChoices } from './ruby'
+
+// ruby 工具：按元素优先级取字 —— 元素自身 data-local-han-<syl> > 全局 userChoices > defaultA
+function getHanForElement(el: HTMLElement, syl: string): string {
+  const local = el.getAttribute(`data-local-han-${syl}`)
+  if (local && local.length > 0) return local
+  return toHan(syl)
+}
+
+// 清除某个元素上所有音节的局部选择
+function clearLocalHan(el: HTMLElement, syls: string[]) {
+  for (const s of syls) el.removeAttribute(`data-local-han-${s}`)
+}
 
 // --- Types ---
 interface NavItem {
@@ -600,6 +613,156 @@ contentArea.addEventListener('click', (e) => {
   }
 })
 
+// 全局 ruby-clickable 点击委托（作用于 content-area 和 changes-panel 等所有位置的 ruby 元素）
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement
+  if (!target) return
+  const rubyEl = target.closest('.ruby-clickable') as HTMLElement | null
+  if (rubyEl && rubyEl.hasAttribute('data-syl')) {
+    e.preventDefault()
+    e.stopPropagation()
+    showRubyPicker(rubyEl)
+    return
+  }
+})
+
+// --- ruby 选字 Picker ---
+
+let rubyPicker: HTMLElement | null = null
+
+function closeRubyPicker() {
+  if (rubyPicker) {
+    rubyPicker.remove()
+    rubyPicker = null
+  }
+}
+
+function showRubyPicker(rubyEl: HTMLElement) {
+  closeRubyPicker()
+  const sylAttr = rubyEl.getAttribute('data-syl') || ''
+  const firstSyl = sylAttr.split(' ')[0]
+  const options = getHanOptions(firstSyl)
+  if (options.length === 0) return
+
+  const syls = sylAttr.split(' ').filter(Boolean)
+
+  const panel = document.createElement('div')
+  panel.className = 'haji-picker'
+
+  const title = document.createElement('div')
+  title.className = 'haji-picker-title'
+  title.textContent = `选字：${sylAttr}`
+  panel.appendChild(title)
+
+  // 候选字 — 默认"只改当前元素"
+  const row = document.createElement('div')
+  row.className = 'haji-picker-row'
+
+  // 当前每个音节的显示字（决定 active 样式）
+  const currentDisplay = syls.map(s => getHanForElement(rubyEl, s))
+  const firstDisplay = currentDisplay[0] || ''
+
+  options.forEach(ch => {
+    const btn = document.createElement('button')
+    btn.className = 'haji-picker-char'
+    btn.textContent = ch
+    if (firstDisplay === ch) btn.classList.add('active')
+    btn.addEventListener('click', (ev) => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      // 只改当前元素：对每个音节写 data-local-han-<syl>
+      syls.forEach(s => {
+        rubyEl.setAttribute(`data-local-han-${s}`, ch)
+      })
+      refreshAllRuby()
+      closeRubyPicker()
+    })
+    row.appendChild(btn)
+  })
+
+  panel.appendChild(row)
+
+  // 操作按钮行 — 全改 / 恢复当前 / 全恢复
+  const actionRow = document.createElement('div')
+  actionRow.className = 'haji-picker-actions'
+
+  const applyAllBtn = document.createElement('button')
+  applyAllBtn.className = 'haji-picker-action'
+  applyAllBtn.textContent = `✱ 全改「${firstDisplay}」到全局`
+  applyAllBtn.title = '把所有相同音节的 ruby 都改成这个字（作为全局默认）'
+  applyAllBtn.addEventListener('click', (ev) => {
+    ev.preventDefault()
+    ev.stopPropagation()
+    syls.forEach(s => setHanChoice(s, firstDisplay))
+    // 清理所有元素上这些音节的局部选择
+    document.querySelectorAll('.ruby-clickable').forEach(el => {
+      for (const s of syls) el.removeAttribute(`data-local-han-${s}`)
+    })
+    refreshAllRuby()
+    closeRubyPicker()
+  })
+  actionRow.appendChild(applyAllBtn)
+
+  const resetCurBtn = document.createElement('button')
+  resetCurBtn.className = 'haji-picker-action'
+  resetCurBtn.textContent = '↩ 恢复当前元素默认'
+  resetCurBtn.addEventListener('click', (ev) => {
+    ev.preventDefault()
+    ev.stopPropagation()
+    clearLocalHan(rubyEl, syls)
+    refreshAllRuby()
+    closeRubyPicker()
+  })
+  actionRow.appendChild(resetCurBtn)
+
+  panel.appendChild(actionRow)
+
+  document.body.appendChild(panel)
+  rubyPicker = panel
+
+  // 定位
+  const rect = rubyEl.getBoundingClientRect()
+  const top = rect.bottom + window.scrollY + 4
+  const left = rect.left + window.scrollX
+  panel.style.top = top + 'px'
+  panel.style.left = left + 'px'
+  requestAnimationFrame(() => {
+    const p = rubyPicker
+    if (!p) return
+    const w = p.offsetWidth
+    const h = p.offsetHeight
+    if (left + w > window.innerWidth - 8) {
+      p.style.left = Math.max(8, window.innerWidth - w - 8) + 'px'
+    }
+    if (top + h > window.scrollY + window.innerHeight - 8) {
+      p.style.top = Math.max(8, rect.top + window.scrollY - h - 4) + 'px'
+    }
+  })
+}
+
+// 懒加载 toHan（与 ruby.ts 的 toHan 行为一致：先查 userChoices，再查 defaultA）
+let toHan: (s: string) => string = (s: string) => s
+import('./ruby').then(mod => { toHan = mod.toHan })
+
+function refreshAllRuby() {
+  document.querySelectorAll('.ruby-clickable').forEach(el => {
+    const sylAttr = el.getAttribute('data-syl')
+    if (!sylAttr) return
+    const syls = sylAttr.split(' ')
+    const rubyRoot = el as HTMLElement
+
+    // 清除 ruby 内非 rt 的节点，重新用 getHanForElement 生成汉字
+    const toRemove: Node[] = []
+    rubyRoot.childNodes.forEach(node => {
+      if ((node as HTMLElement).tagName && (node as HTMLElement).tagName.toLowerCase() === 'rt') return
+      toRemove.push(node)
+    })
+    toRemove.forEach(n => rubyRoot.removeChild(n))
+    const newHan = syls.map(s => getHanForElement(rubyRoot, s)).join('')
+    rubyRoot.insertBefore(document.createTextNode(newHan), rubyRoot.firstChild)
+  })
+}
+
 // --- Annotate button hover/tap 绑定（只在初始化时调用一次） ---
 
 /** 渲染关联文档横条 */
@@ -953,6 +1116,15 @@ searchInput.addEventListener('keydown', (e) => {
     }
   } else if (e.key === 'Escape') {
     hideSearchResults()
+  }
+})
+
+// 点击 picker 外部关闭
+document.addEventListener('mousedown', (e) => {
+  if (!rubyPicker) return
+  const target = e.target as Node
+  if (!rubyPicker.contains(target) && !(target as HTMLElement).closest('.ruby-clickable')) {
+    closeRubyPicker()
   }
 })
 
