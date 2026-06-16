@@ -27,7 +27,7 @@ async function getRuby() {
 async function replaceRubyInHtml(htmlOrText: string): Promise<string> {
   try {
     const mod = await getRuby()
-    const { buildSentenceRuby, buildTermRuby, toHan, toPua } = mod
+    const { buildSentenceRuby, buildTermRuby } = mod
 
     // 1) `((((...)))) 段落级混写
     let out = htmlOrText

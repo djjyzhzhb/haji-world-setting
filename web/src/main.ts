@@ -3,7 +3,7 @@ import { marked } from 'marked'
 import { initChangesSystem, bindAnnotateZones, scanAndRenderBadges, scrollToNoteInContent, getSourceName, setSourceName, hideAnnotateBtn } from './ui/changes'
 import { ANNOTATABLE_SELECTOR } from './api'
 import { buildIndex, search } from './search'
-import { setHanChoice, resetHanChoice, resetAllHanChoices, getHanOptions, getAllHanChoices } from './ruby'
+import { setHanChoice, getHanOptions } from './ruby'
 
 // ruby 工具：按元素优先级取字 —— 元素自身 data-local-han-<syl> > 全局 userChoices > defaultA
 function getHanForElement(el: HTMLElement, syl: string): string {
