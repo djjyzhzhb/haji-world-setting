@@ -14,6 +14,38 @@ import {
 } from '../api'
 import { marked } from 'marked'
 
+// 哈吉语 ruby 工具（懒加载，避免循环依赖）
+let _rubyPromise: Promise<any> | null = null
+async function getRuby() {
+  if (!_rubyPromise) {
+    _rubyPromise = import('../ruby')
+  }
+  return _rubyPromise
+}
+
+// 将标记转换为带 ruby 注音的 HTML
+async function replaceRubyInHtml(htmlOrText: string): Promise<string> {
+  try {
+    const mod = await getRuby()
+    const { buildSentenceRuby, buildTermRuby, toHan, toPua } = mod
+
+    // 1) `((((...)))) 段落级混写
+    let out = htmlOrText
+    if (/\(\(\(\(/.test(out)) {
+      out = out.replace(/\(\(\(\(([\s\S]*?)\)\)\)\)/g, (_, inner) => {
+        return `<span class="haji-sentence">${buildSentenceRuby(inner)}</span>`
+      })
+    }
+    // 2) `{{ruby: ...}} 逐词
+    if (/\{\{ruby:/.test(out)) {
+      out = out.replace(/\{\{ruby:([^}]+)\}\}/g, (_, term) => buildTermRuby(term))
+    }
+    return out
+  } catch (e) {
+    return htmlOrText
+  }
+}
+
 const STORAGE_KEY = 'app.changeNotes.v1'
 const SOURCE_KEY = 'app.authorName.v1'
 
@@ -978,11 +1010,10 @@ function closeChangesPanel(): void {
   changesPanel.classList.remove('open')
 }
 
-function updateChangesList(): void {
+async function updateChangesList(): Promise<void> {
   if (!changesList) return
   changesCount.textContent = changes.length.toString()
 
-  // 筛选（文字 + 状态）
   const visible = changes.filter(c => {
     if (filterStatus !== 'all' && c.status !== filterStatus) return false
     if (!filterText) return true
@@ -1012,7 +1043,15 @@ function updateChangesList(): void {
     return
   }
 
-  changesList.innerHTML = visible.map((c) => `
+  // 渲染 HTML（同时等待每个 body 的 ruby 处理完成）
+  const htmlParts = await Promise.all(visible.map(async (c) => {
+    let bodyHtml = ''
+    if (c.content.body) {
+      const parsedStr = marked.parse(c.content.body) as string
+      const rubyRendered = await replaceRubyInHtml(parsedStr)
+      bodyHtml = `<div class="change-item-body">${rubyRendered}</div>`
+    }
+    return `
     <div class="change-item" data-id="${c.id}">
       <div class="change-item-header">
         <span class="change-badge change-badge-${c.type}">${typeLabels[c.type] || c.type}</span>
@@ -1036,13 +1075,16 @@ function updateChangesList(): void {
         <span class="change-item-time">${formatTime(c.timestamp)}</span>
       </div>
       <div class="change-item-collapsible">
-        ${c.content.body ? `<div class="change-item-body">${marked.parse(c.content.body)}</div>` : ''}
+        ${bodyHtml}
         ${c.content.tags && c.content.tags.length ? `<div class="change-item-tags">${c.content.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         ${c.content.reference ? `<div class="change-item-ref">参考：${esc(c.content.reference)}</div>` : ''}
         ${c.content.relatedDocs && c.content.relatedDocs.length ? `<div class="change-item-related">关联：${c.content.relatedDocs.map(d => esc(d)).join(' · ')}</div>` : ''}
       </div>
     </div>
-  `).join('')
+  `;
+  }));
+
+  changesList.innerHTML = htmlParts.join('')
 
   // Bind per-item actions
   changesList.querySelectorAll('.change-item').forEach(el => {
