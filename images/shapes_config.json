@@ -1,0 +1,48 @@
+{
+  "_说明_": "这个文件存放所有【纯展示用形状参数】。它们不对应 txt 原文里的任何硬值，只是为了让图能画出来而选的一些代表值。你可以直接改这些数字，然后运行 generate_charts_v3.py 重新出图。改完的值会立刻生效，不需要懂 Python。",
+  "_如何改_": "只改数字即可。例如把 eff_width_normal 从 180 改成 90，就相当于'共振窗口变窄了一半'。不保证所有组合都好看，但趋势不会反。",
+  "eff_width_stable": 90,
+  "eff_width_normal": 180,
+  "eff_width_turbulent": 360,
+  "layer_n_representatives": [
+    300,
+    550,
+    830
+  ],
+  "layer_training_years": [
+    1.0,
+    5.0,
+    12.0
+  ],
+  "risk_power": 2.3,
+  "alpha_uncertainty": 0.2,
+  "self_consume_start": 0.6,
+  "self_consume_end": 0.9,
+  "self_consume_tau": 4.0,
+  "history_t_spacing": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "tower_amp": 0.35,
+  "tower_width": 60,
+  "tower_positions": [
+    520,
+    600,
+    680
+  ],
+  "background_amp": 0.5,
+  "background_width": 220,
+  "interference_amp": 0.35,
+  "interference_width": 120,
+  "f_period_amp_primary": 200,
+  "f_period_amp_secondary": 60,
+  "f_period_t_primary": 80,
+  "f_period_t_secondary": 25
+}

@@ -602,14 +602,56 @@ contentArea.addEventListener('click', (e) => {
   const target = e.target as HTMLElement
   if (target.classList.contains('causal-link')) {
     const path = target.dataset.causalPath
-    if (path) loadDocument(path)
+    if (path) {
+      e.preventDefault()
+      loadDocument(path)
+    }
     return
   }
   // 上一篇/下一篇点击委托
   const navLink = target.closest('[data-nav-path]') as HTMLElement | null
   if (navLink) {
     const path = navLink.dataset.navPath
-    if (path) loadDocument(path)
+    if (path) {
+      e.preventDefault()
+      loadDocument(path)
+    }
+    return
+  }
+  // ★ 标准 markdown 中的 .md 文件链接（[名称](路径/xxx.md)）
+  const mdLink = target.closest('a') as HTMLAnchorElement | null
+  if (mdLink && mdLink.href) {
+    const rawHref = mdLink.getAttribute('href') || ''
+    // 只处理指向 .md 文件的相对/绝对链接
+    if (/\.md(\?|#|$)/.test(rawHref)) {
+      e.preventDefault()
+      // ★ URL 解码（中文文件名会被浏览器/渲染为 %XX%XX，
+      // ★ 需要 decodeURIComponent 还原为原始中文才能匹配 docImportMap 的 key）
+      let decoded: string
+      try {
+        decoded = decodeURIComponent(rawHref.replace(/[#?].*$/, ''))
+      } catch {
+        decoded = rawHref.replace(/[#?].*$/, '')
+      }
+      // 如果是相对路径（不是以 / 开头的），相对于当前文档路径解析
+      if (!decoded.startsWith('/') && currentDoc) {
+        const currentDir = currentDoc.path.includes('/')
+          ? currentDoc.path.substring(0, currentDoc.path.lastIndexOf('/') + 1)
+          : ''
+        decoded = currentDir + decoded
+      } else if (decoded.startsWith('/')) {
+        decoded = decoded.substring(1) // 去掉开头的 /
+      }
+      // 规范化：去掉 "./"、解析 "../"
+      const parts: string[] = []
+      for (const p of decoded.split('/')) {
+        if (p === '' || p === '.') continue
+        if (p === '..') { parts.pop(); continue }
+        parts.push(p)
+      }
+      const finalPath = parts.join('/')
+      loadDocument(finalPath)
+    }
   }
 })
 
