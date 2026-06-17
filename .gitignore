@@ -16,6 +16,14 @@ web/node_modules/
 web/dist/
 .vite/
 
+# Python 缓存 / 调试日志
+__pycache__/
+*.py[cod]
+*.log
+debug.log
+images/__pycache__/
+images/.matplotlib_cache/
+
 # AI 工具工作目录（本地缓存 / AI 工具缓存不提交，仅保留 projects 中的 skill 配置
 .trae/documents/
 .trae/specs/
