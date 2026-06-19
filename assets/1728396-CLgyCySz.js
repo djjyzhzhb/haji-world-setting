@@ -1,0 +1,11 @@
+var e=`# 1728396
+
+sutei yu sugan ne sa nenen ja cu sutei cucu sugan cun
+
+## 元音计数
+
+o i e ei a ai u iu iu-i iu-e iu-ei iu-a iu-ai iu-u eu eu-i
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+
+1，2，3，
+`;export{e as default};

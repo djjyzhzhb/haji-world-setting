@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-101
+title: "潜在叙事种子"
+category: "narrative"
+tags: ["叙事", "种子"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 潜在叙事种子
+
+> 待填充：可发展的故事种子。
+`;export{e as default};

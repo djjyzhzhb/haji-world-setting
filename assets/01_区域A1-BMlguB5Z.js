@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-025
+title: "区域A1"
+category: "geography"
+tags: ["区域"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 区域A1
+
+> 待填充。
+`;export{e as default};

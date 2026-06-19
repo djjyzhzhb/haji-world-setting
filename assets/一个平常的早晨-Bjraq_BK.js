@@ -1,0 +1,10 @@
+var e=`# 一个平常的早晨
+
+太阳升起来了。男人醒来，他打开窗户，呼吸着新鲜的空气。他看到一只鸟在树上唱歌。男人微笑了。然后，他走进厨房，为自己准备早餐。他煮了咖啡，烤了面包。今天会是美好的一天。
+
+## 哈吉语翻译
+
+sur zuzi kaisin jalang sakikais。kuti üjacelis，pirqi jayjina ta，hufusi kairkina。jasuy zuzi kiso e tigi ükoiy ta。kuti walikaisi。su，wayi e chenqidin ta，suxi qiyi kaisin chen。xifi zhirqi shejarhen ta，zhifi zhirqi sachen。laqü jarzusinzi susin。
+
+/jarsila suyisao nia。
+`;export{e as default};

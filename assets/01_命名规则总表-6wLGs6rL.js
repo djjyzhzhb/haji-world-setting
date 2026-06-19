@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-120
+title: "命名规则总表"
+category: "appendix"
+tags: ["命名"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 命名规则总表
+
+> 待填充：各文化/种族命名规范。
+`;export{e as default};

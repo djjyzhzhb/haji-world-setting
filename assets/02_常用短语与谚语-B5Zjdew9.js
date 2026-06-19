@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-123
+title: "常用短语与谚语"
+category: "appendix"
+tags: ["语言", "谚语"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 常用短语与谚语
+
+> 待填充：世界内的语言风味。
+`;export{e as default};

@@ -1,0 +1,3 @@
+var e=`形容词后缀，r
+动词后缀，y
+`;export{e as default};

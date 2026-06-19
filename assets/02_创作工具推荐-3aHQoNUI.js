@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-125
+title: "创作工具推荐"
+category: "appendix"
+tags: ["工具"]
+created: 2026-06-12
+modified: 2026-06-12
+status: draft
+causal_refs: []
+---
+
+# 创作工具推荐
+
+> 待填充：推荐使用的软件和工具。
+`;export{e as default};

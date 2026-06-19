@@ -1,0 +1,15 @@
+var e=`﻿---
+id: DOC-010c
+title: "日月与天象"
+category: "world_core"
+tags: ["宇宙", "日月", "天象"]
+created: 2026-06-15
+modified: 2026-06-15
+status: draft
+causal_refs: []
+---
+
+# 日月与天象
+
+> 待填充：该世界的太阳、月亮的外观与运行规律，以及日食、月食、彗星等天象事件。
+`;export{e as default};
